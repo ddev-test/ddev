@@ -11,6 +11,8 @@ func main() {
 	defer util.CheckGoroutines()
 	defer util.TimeTrack()()
 
+	// Need to buidl stuff
+
 	// Initialization is currently done before via init() func somewhere while
 	// creating the ddevapp. This should be cleaned up.
 	amplitude.InitAmplitude()
