@@ -1,6 +1,7 @@
 package nodeps
 
 import (
+	"github.com/maruel/natural"
 	"sort"
 
 	"github.com/ddev/ddev/pkg/config/types"
@@ -83,6 +84,7 @@ var ValidWebserverTypes = map[string]bool{
 const (
 	AppTypeNone         = ""
 	AppTypeBackdrop     = "backdrop"
+	AppTypeCakePHP      = "cakephp"
 	AppTypeCraftCms     = "craftcms"
 	AppTypeDjango4      = "django4"
 	AppTypeDrupal6      = "drupal6"
@@ -90,6 +92,7 @@ const (
 	AppTypeDrupal8      = "drupal8"
 	AppTypeDrupal9      = "drupal9"
 	AppTypeDrupal10     = "drupal10"
+	AppTypeDrupal       = "drupal"
 	AppTypeLaravel      = "laravel"
 	AppTypeSilverstripe = "silverstripe"
 	AppTypeMagento      = "magento"
@@ -136,7 +139,7 @@ func GetValidPHPVersions() []string {
 	for p := range ValidPHPVersions {
 		s = append(s, p)
 	}
-	sort.Strings(s)
+	sort.Sort(natural.StringSlice(s))
 	return s
 }
 
@@ -197,7 +200,7 @@ func GetValidMariaDBVersions() []string {
 	for p := range ValidMariaDBVersions {
 		s = append(s, p)
 	}
-	sort.Strings(s)
+	sort.Sort(natural.StringSlice(s))
 	return s
 }
 
@@ -218,7 +221,7 @@ func GetValidMySQLVersions() []string {
 	for p := range ValidMySQLVersions {
 		s = append(s, p)
 	}
-	sort.Strings(s)
+	sort.Sort(natural.StringSlice(s))
 	return s
 }
 
@@ -229,7 +232,7 @@ func GetValidPostgresVersions() []string {
 	for p := range ValidPostgresVersions {
 		s = append(s, p)
 	}
-	sort.Strings(s)
+	sort.Sort(natural.StringSlice(s))
 	return s
 }
 

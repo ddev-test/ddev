@@ -32,7 +32,7 @@ PKG := github.com/ddev/ddev
 SRC_DIRS := cmd pkg
 
 # Version variables to replace in build
-VERSION_VARIABLES ?= DdevVersion SegmentKey AmplitudeAPIKey
+VERSION_VARIABLES ?= DdevVersion AmplitudeAPIKey
 
 # These variables will be used as the default unless overridden by the make
 DdevVersion ?= $(VERSION)
@@ -165,12 +165,18 @@ mkdocs:
 # It works best with mkdocs installed, `pip3 install mkdocs`,
 # see https://www.mkdocs.org/user-guide/installation/
 # But it will also work using docker.
+MKDOCS_TAG := 1.5.2
+ifeq ($(BUILD_ARCH),arm64)
+    MKDOCS_TAG := arm64v8-$(MKDOCS_TAG)
+endif
 mkdocs-serve:
+	set -x; \
 	if command -v mkdocs >/dev/null ; then \
   		mkdocs serve; \
 	else \
-		docker run -it --rm -p 8000:8000 -v "${PWD}:/docs" -e "ADD_MODULES=mkdocs-material mkdocs-redirects mkdocs-minify-plugin mdx_truly_sane_lists mkdocs-git-revision-date-localized-plugin" -e "LIVE_RELOAD_SUPPORT=true" -e "FAST_MODE=true" -e "DOCS_DIRECTORY=./docs" polinux/mkdocs:1.2.3; \
-	fi
+		docker run -it -p 8000:8000 -v "${PWD}:/docs" -e "ADD_MODULES=mkdocs-material mkdocs-redirects mkdocs-minify-plugin mdx_truly_sane_lists mkdocs-git-revision-date-localized-plugin" -e "LIVE_RELOAD_SUPPORT=true" -e "FAST_MODE=true" -e "DOCS_DIRECTORY=./docs" "polinux/mkdocs:$(MKDOCS_TAG)"; \
+	fi; \
+	set +x
 
 # Install markdown-link-check locally with "npm install -g markdown-link-check"
 markdown-link-check:

@@ -214,9 +214,11 @@ func init() {
 	ConfigCommand.Flags().BoolVar(&composerRootRelPathDefaultArg, "composer-root-default", false, "Unsets a web service Composer root directory override")
 	ConfigCommand.Flags().StringVar(&projectTypeArg, "project-type", "", projectTypeUsage)
 	ConfigCommand.Flags().StringVar(&phpVersionArg, "php-version", "", "The version of PHP that will be enabled in the web container")
-	ConfigCommand.Flags().StringVar(&httpPortArg, "http-port", "", "The router HTTP port for this project")
+	ConfigCommand.Flags().StringVar(&httpPortArg, "http-port", "", "The router HTTP port for this project; deprecated alias for `--router-http-port`")
+	_ = ConfigCommand.Flags().MarkDeprecated("http-port", "--http-port is a deprecated alias for `--router-http-port`")
 	ConfigCommand.Flags().StringVar(&httpPortArg, "router-http-port", "", "The router HTTP port for this project")
-	ConfigCommand.Flags().StringVar(&httpsPortArg, "https-port", "", "The router HTTPS port for this project")
+	ConfigCommand.Flags().StringVar(&httpsPortArg, "https-port", "", "The router HTTPS port for this project; deprecated alias for `--router-https-port`")
+	_ = ConfigCommand.Flags().MarkDeprecated("https-port", "--https-port is a deprecated alias for `--router-https-port`")
 	ConfigCommand.Flags().StringVar(&httpsPortArg, "router-https-port", "", "The router HTTPS port for this project")
 	ConfigCommand.Flags().BoolVar(&xdebugEnabledArg, "xdebug-enabled", false, "Whether or not XDebug is enabled in the web container")
 	ConfigCommand.Flags().BoolVar(&noProjectMountArg, "no-project-mount", false, "Whether or not to skip mounting project code into the web container")
@@ -306,6 +308,7 @@ func init() {
 	ConfigCommand.Flags().Int("default-container-timeout", 120, `default time in seconds that DDEV waits for all containers to become ready on start`)
 	ConfigCommand.Flags().Bool("disable-upload-dirs-warning", true, `Disable warnings about upload-dirs not being set when using performance-mode=mutagen.`)
 	ConfigCommand.Flags().StringVar(&ddevVersionConstraint, "ddev-version-constraint", "", `Specify a ddev version constraint to validate ddev against.`)
+	ConfigCommand.Flags().Bool("corepack-enable", true, `Do 'corepack enable' to enable latest yarn/pnpm'`)
 
 	RootCmd.AddCommand(ConfigCommand)
 
@@ -410,7 +413,7 @@ func handleMainConfigArgs(cmd *cobra.Command, _ []string, app *ddevapp.DdevApp) 
 	}
 
 	if projectTypeArg != "" && !ddevapp.IsValidAppType(projectTypeArg) {
-		validAppTypes := strings.Join(ddevapp.GetValidAppTypes(), ", ")
+		validAppTypes := strings.Join(ddevapp.GetValidAppTypesWithoutAliases(), ", ")
 		util.Failed("Apptype must be one of %s", validAppTypes)
 	}
 
@@ -643,6 +646,10 @@ func handleMainConfigArgs(cmd *cobra.Command, _ []string, app *ddevapp.DdevApp) 
 
 	if cmd.Flag("disable-upload-dirs-warning").Changed {
 		app.DisableUploadDirsWarning, _ = cmd.Flags().GetBool("disable-upload-dirs-warning")
+	}
+
+	if cmd.Flag("corepack-enable").Changed {
+		app.CorepackEnable, _ = cmd.Flags().GetBool("corepack-enable")
 	}
 
 	if webserverTypeArg != "" {

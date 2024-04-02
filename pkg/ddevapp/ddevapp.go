@@ -80,6 +80,7 @@ type WebExtraDaemon struct {
 type DdevApp struct {
 	Name                      string                 `yaml:"name"`
 	Type                      string                 `yaml:"type"`
+	AppRoot                   string                 `yaml:"-"`
 	Docroot                   string                 `yaml:"docroot"`
 	PHPVersion                string                 `yaml:"php_version"`
 	WebserverType             string                 `yaml:"webserver_type"`
@@ -98,7 +99,6 @@ type DdevApp struct {
 	BindAllInterfaces         bool                   `yaml:"bind_all_interfaces,omitempty"`
 	FailOnHookFailGlobal      bool                   `yaml:"-"`
 	ConfigPath                string                 `yaml:"-"`
-	AppRoot                   string                 `yaml:"-"`
 	DataDir                   string                 `yaml:"-"`
 	SiteSettingsPath          string                 `yaml:"-"`
 	SiteDdevSettingsFile      string                 `yaml:"-"`
@@ -127,6 +127,7 @@ type DdevApp struct {
 	DisableSettingsManagement bool                   `yaml:"disable_settings_management,omitempty"`
 	WebEnvironment            []string               `yaml:"web_environment"`
 	NodeJSVersion             string                 `yaml:"nodejs_version,omitempty"`
+	CorepackEnable            bool                   `yaml:"corepack_enable"`
 	DefaultContainerTimeout   string                 `yaml:"default_container_timeout,omitempty"`
 	WebExtraExposedPorts      []WebExposedPort       `yaml:"web_extra_exposed_ports,omitempty"`
 	WebExtraDaemons           []WebExtraDaemon       `yaml:"web_extra_daemons,omitempty"`

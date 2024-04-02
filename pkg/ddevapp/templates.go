@@ -7,9 +7,10 @@ const ConfigInstructions = `
 # name: <projectname> # Name of the project, automatically provides
 #   http://projectname.ddev.site and https://projectname.ddev.site
 
-# type: <projecttype>  # backdrop, craftcms, django4, drupal6/7/8/9/10, laravel, magento, magento2, php, python, shopware6, silverstripe, typo3, wordpress
+# type: <projecttype>  # backdrop, craftcms, django4, drupal, drupal6, drupal7, laravel, magento, magento2, php, python, shopware6, silverstripe, typo3, wordpress
 # See https://ddev.readthedocs.io/en/stable/users/quickstart/ for more
 # information on the different project types
+# "drupal" covers recent Drupal 8+
 
 # docroot: <relative_path> # Relative path to the directory containing index.php.
 
@@ -72,6 +73,9 @@ const ConfigInstructions = `
 # see https://www.npmjs.com/package/n#specifying-nodejs-versions
 # Note that you can continue using 'ddev nvm' or nvm inside the web container
 # to change the project's installed node version if you need to.
+
+# corepack_enable: false
+# Change to 'true' to 'corepack enable' and gain access to latest versions of yarn/pnpm
 
 # additional_hostnames:
 #  - somename

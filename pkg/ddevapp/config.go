@@ -531,10 +531,6 @@ func (app *DdevApp) ValidateConfig() error {
 		}
 	}
 
-	// if app.Database.Type == nodeps.Postgres && (nodeps.ArrayContainsString([]string{"wordpress", "magento", "magento2"}, app.Type)) {
-	//	return fmt.Errorf("the %s project has a project type %s that does not support PostgreSQL database", app.Name, app.Type)
-	// }
-
 	return nil
 }
 
@@ -943,6 +939,9 @@ func (app *DdevApp) RenderComposeYAML() (string, error) {
 		extraWebContent = extraWebContent + "\nRUN npm install -g n"
 		extraWebContent = extraWebContent + fmt.Sprintf("\nRUN n install %s && ln -sf /usr/local/bin/node /usr/local/bin/nodejs", app.NodeJSVersion)
 	}
+	if app.CorepackEnable {
+		extraWebContent = extraWebContent + "\nRUN corepack enable"
+	}
 
 	// Some installed packages can change the permissions of /run/php
 	// First seen in Debian 12 Bookworm
@@ -1303,7 +1302,7 @@ func (app *DdevApp) AppTypePrompt() error {
 	// If we found an application type set it and inform the user.
 	util.Success("Found a %s codebase at %s.", detectedAppType, filepath.Join(app.AppRoot, app.Docroot))
 
-	validAppTypes := strings.Join(GetValidAppTypes(), ", ")
+	validAppTypes := strings.Join(GetValidAppTypesWithoutAliases(), ", ")
 	typePrompt := "Project Type [%s] (%s): "
 
 	defaultAppType := app.Type

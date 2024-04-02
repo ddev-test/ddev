@@ -3,10 +3,6 @@ package versionconstants
 // DdevVersion is the current version of DDEV, by default the Git committish (should be current Git tag)
 var DdevVersion = "v0.0.0-overridden-by-make" // Note that this is overridden by make
 
-// SegmentKey is the ddev-specific key for Segment service
-// Compiled with link-time variables
-var SegmentKey = ""
-
 // AmplitudeAPIKey is the ddev-specific key for Amplitude service
 // Compiled with link-time variables
 var AmplitudeAPIKey = ""
@@ -15,7 +11,7 @@ var AmplitudeAPIKey = ""
 var WebImg = "ddev/ddev-webserver"
 
 // WebTag defines the default web image tag
-var WebTag = "20240320_new_platform_cli" // Note that this can be overridden by make
+var WebTag = "20240324_corepack_config" // Note that this can be overridden by make
 
 // DBImg defines the default db image used for applications.
 var DBImg = "ddev/ddev-dbserver"
@@ -43,4 +39,4 @@ var MutagenVersion = ""
 
 const RequiredMutagenVersion = "0.17.2"
 
-const RequiredDockerComposeVersionDefault = "v2.25.0"
+const RequiredDockerComposeVersionDefault = "v2.26.0"
