@@ -1,5 +1,7 @@
 # Commands
 
+Just junk added
+
 You can tell DDEV what to do by running its commands. This page details each of the available commands and their options, or flags.
 
 Run DDEV without any commands or flags to see this list in your terminal:
