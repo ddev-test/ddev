@@ -1,6 +1,6 @@
 # Commands
 
-Just junk added
+ junk added without using the word `just`
 
 You can tell DDEV what to do by running its commands. This page details each of the available commands and their options, or flags.
 
