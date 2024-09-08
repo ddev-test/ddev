@@ -85,10 +85,19 @@ jobs:
       - name: Load 1password secret(s)
         uses: 1password/load-secrets-action@v2
         with:
-          export-env: true
+          export-env: false
         env:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
           DDEV_PLATFORM_API_TOKEN: op://test-secrets/DDEV_PLATFORM_API_TOKEN/credential
+          DDEV_ACQUIA_API_KEY: op://test-secrets/DDEV_ACQUIA_API_KEY/credential
+          DDEV_ACQUIA_API_SECRET: op://test-secrets/DDEV_ACQUIA_API_SECRET/credential
+          DDEV_ACQUIA_SSH_KEY: op://test-secrets/DDEV_ACQUIA_SSH_KEY/credential
+          DDEV_LAGOON_SSH_KEY: op://test-secrets/DDEV_LAGOON_SSH_KEY/credential
+          DDEV_PANTHEON_SSH_KEY: op://test-secrets/DDEV_PANTHEON_SSH_KEY/credential
+          DDEV_PANTHEON_API_TOKEN: op://test-secrets/DDEV_PANTHEON_API_TOKEN/credential
+          DDEV_UPSUN_API_TOKEN: op://test-secrets/DDEV_UPSUN_API_TOKEN/credential
+
+
 
       - name: Get Date
         id: get-date
