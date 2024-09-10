@@ -87,7 +87,7 @@ jobs:
         with:
           export-env: false
         env:
-          TESTS_SERVICE_ACCOUNT_TOKEN: ${{ secrets.TESTS_SERVICE_ACCOUNT_TOKEN }}
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.TESTS_SERVICE_ACCOUNT_TOKEN }}
           DDEV_PLATFORM_API_TOKEN: op://test-secrets/DDEV_PLATFORM_API_TOKEN/credential
           DDEV_ACQUIA_API_KEY: op://test-secrets/DDEV_ACQUIA_API_KEY/credential
           DDEV_ACQUIA_API_SECRET: op://test-secrets/DDEV_ACQUIA_API_SECRET/credential
