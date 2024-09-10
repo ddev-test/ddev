@@ -269,10 +269,15 @@ func setupSSHKey(t *testing.T, privateKey string, expectScriptDir string) error 
 	// Provide an SSH key for `ddev auth ssh`
 	err := os.Mkdir("sshtest", 0755)
 	require.NoError(t, err)
+	// If the first line is empty, discard it
+	if privateKey[0] == '\n' {
+		privateKey = privateKey[1:]
+	}
 	err = os.WriteFile(filepath.Join("sshtest", "id_rsa_test"), []byte(privateKey), 0600)
 	require.NoError(t, err)
 	out, err := exec.RunHostCommand("expect", filepath.Join(expectScriptDir, "ddevauthssh.expect"), DdevBin, "./sshtest")
-	require.NoError(t, err, "out=%s", out)
+	pwd, _ := os.Getwd()
+	require.NoError(t, err, "failed to RunHostCommand expect script in dir=%s, out=%s", pwd, out)
 	require.Contains(t, out, "Identity added:")
 	return nil
 }
