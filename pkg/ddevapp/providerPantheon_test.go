@@ -273,6 +273,7 @@ func setupSSHKey(t *testing.T, privateKey string, expectScriptDir string) error 
 	if privateKey[0] == '\n' {
 		privateKey = privateKey[1:]
 	}
+	t.Logf("privateKey starts with %s", privateKey[0:30])
 	err = os.WriteFile(filepath.Join("sshtest", "id_rsa_test"), []byte(privateKey), 0600)
 	require.NoError(t, err)
 	out, err := exec.RunHostCommand("expect", filepath.Join(expectScriptDir, "ddevauthssh.expect"), DdevBin, "./sshtest")
