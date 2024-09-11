@@ -38,6 +38,7 @@ func lagoonSetupSSHKey(t *testing.T) string {
 	if sshkey = os.Getenv("DDEV_LAGOON_SSH_KEY"); sshkey == "" {
 		t.Skipf("No DDEV_LAGOON_SSH_KEY env var has been set. Skipping %v", t.Name())
 	}
+	return sshkey + "\n"
 }
 
 // TestLagoonPull ensures we can pull from lagoon
