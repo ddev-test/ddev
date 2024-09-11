@@ -80,21 +80,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Load 1password secret(s)
-        uses: 1password/load-secrets-action@v2
-        with:
-          export-env: true
-        env:
-          OP_SERVICE_ACCOUNT_TOKEN: "${{ secrets.TESTS_SERVICE_ACCOUNT_TOKEN }}"
-          DDEV_ACQUIA_API_KEY: "op://test-secrets/DDEV_ACQUIA_API_KEY/credential"
-          DDEV_ACQUIA_API_SECRET: "op://test-secrets/DDEV_ACQUIA_API_SECRET/credential"
-          DDEV_ACQUIA_SSH_KEY: "op://test-secrets/DDEV_ACQUIA_SSH_KEY/private key?ssh-format=openssh"
-          DDEV_LAGOON_SSH_KEY: "op://test-secrets/DDEV_LAGOON_SSH_KEY/private key?ssh-format=openssh"
-          DDEV_PANTHEON_API_TOKEN: "op://test-secrets/DDEV_PANTHEON_API_TOKEN/credential"
-          DDEV_PANTHEON_SSH_KEY: "op://test-secrets/DDEV_PANTHEON_SSH_KEY/private key?ssh-format=openssh"
-          DDEV_PLATFORM_API_TOKEN: "op://test-secrets/DDEV_PLATFORM_API_TOKEN/credential"
-          DDEV_UPSUN_API_TOKEN: "op://test-secrets/DDEV_UPSUN_API_TOKEN/credential"
-
       - name: Get Date
         id: get-date
         run: |
@@ -138,6 +123,22 @@ jobs:
           echo "MAKE_TARGET=test" >> $GITHUB_ENV
           echo "TESTARGS=-failfast -run '(TestDdevFullSite.*|TestDdevImportFiles|TestDdevAllDatabases|TestComposerCreateCmd|Test.*(Push|Pull)|TestAutocomplet)'" >> $GITHUB_ENV
           echo "GOTEST_SHORT=" >> $GITHUB_ENV
+        if: ${{ matrix.pull-push-test-platforms }}
+
+      - name: Load 1password secret(s) for push-pull-test-platforms
+        uses: 1password/load-secrets-action@v2
+        with:
+          export-env: true
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: "${{ secrets.TESTS_SERVICE_ACCOUNT_TOKEN }}"
+          DDEV_ACQUIA_API_KEY: "op://test-secrets/DDEV_ACQUIA_API_KEY/credential"
+          DDEV_ACQUIA_API_SECRET: "op://test-secrets/DDEV_ACQUIA_API_SECRET/credential"
+          DDEV_ACQUIA_SSH_KEY: "op://test-secrets/DDEV_ACQUIA_SSH_KEY/private key?ssh-format=openssh"
+          DDEV_LAGOON_SSH_KEY: "op://test-secrets/DDEV_LAGOON_SSH_KEY/private key?ssh-format=openssh"
+          DDEV_PANTHEON_API_TOKEN: "op://test-secrets/DDEV_PANTHEON_API_TOKEN/credential"
+          DDEV_PANTHEON_SSH_KEY: "op://test-secrets/DDEV_PANTHEON_SSH_KEY/private key?ssh-format=openssh"
+          DDEV_PLATFORM_API_TOKEN: "op://test-secrets/DDEV_PLATFORM_API_TOKEN/credential"
+          DDEV_UPSUN_API_TOKEN: "op://test-secrets/DDEV_UPSUN_API_TOKEN/credential"
         if: ${{ matrix.pull-push-test-platforms }}
 
       - name: Override environment variables for plain nginx
