@@ -88,7 +88,7 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: "${{ secrets.TESTS_SERVICE_ACCOUNT_TOKEN }}"
           DDEV_ACQUIA_API_KEY: "op://test-secrets/DDEV_ACQUIA_API_KEY/credential"
           DDEV_ACQUIA_API_SECRET: "op://test-secrets/DDEV_ACQUIA_API_SECRET/credential"
-          DDEV_ACQUIA_NEW_SSH_KEY: "op://test-secrets/DDEV_ACQUIA_NEW_SSH_KEY/private key?ssh-format=openssh"
+          DDEV_ACQUIA_SSH_KEY: "op://test-secrets/DDEV_ACQUIA_SSH_KEY/private key?ssh-format=openssh"
           DDEV_LAGOON_SSH_KEY: "op://test-secrets/DDEV_LAGOON_SSH_KEY/private key?ssh-format=openssh"
           DDEV_PANTHEON_API_TOKEN: "op://test-secrets/DDEV_PANTHEON_API_TOKEN/credential"
           DDEV_PANTHEON_SSH_KEY: "op://test-secrets/DDEV_PANTHEON_SSH_KEY/private key?ssh-format=openssh"
