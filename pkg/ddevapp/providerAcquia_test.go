@@ -44,8 +44,8 @@ func TestAcquiaPull(t *testing.T) {
 	if acquiaSecret = os.Getenv("DDEV_ACQUIA_API_SECRET"); acquiaSecret == "" {
 		t.Skipf("No DDEV_ACQUIA_SECRET env var has been set. Skipping %v", t.Name())
 	}
-	if sshkey = os.Getenv("DDEV_ACQUIA_SSH_KEY"); sshkey == "" {
-		t.Skipf("No DDEV_ACQUIA_SSH_KEY env var has been set. Skipping %v", t.Name())
+	if sshkey = os.Getenv("DDEV_ACQUIA_NEW_SSH_KEY"); sshkey == "" {
+		t.Skipf("No DDEV_ACQUIA_NEW_SSH_KEY env var has been set. Skipping %v", t.Name())
 	}
 
 	//sshkey = strings.Replace(sshkey, "<SPLIT>", "\n", -1)
@@ -139,8 +139,8 @@ func TestAcquiaPush(t *testing.T) {
 	if acquiaSecret = os.Getenv("DDEV_ACQUIA_API_SECRET"); acquiaSecret == "" {
 		t.Skipf("No DDEV_ACQUIA_API_SECRET env var has been set. Skipping %v", t.Name())
 	}
-	if sshkey = os.Getenv("DDEV_ACQUIA_SSH_KEY"); sshkey == "" {
-		t.Skipf("No DDEV_ACQUIA_SSH_KEY env var has been set. Skipping %v", t.Name())
+	if sshkey = os.Getenv("DDEV_ACQUIA_NEW_SSH_KEY"); sshkey == "" {
+		t.Skipf("No DDEV_ACQUIA_NEW_SSH_KEY env var has been set. Skipping %v", t.Name())
 	}
 	//sshkey = strings.Replace(sshkey, "<SPLIT>", "\n", -1)
 
