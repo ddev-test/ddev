@@ -278,7 +278,7 @@ func setupSSHKey(t *testing.T, privateKey string, expectScriptDir string) error 
 	}
 	l := len(privateKey)
 
-	t.Logf("privateKey starts with character '%v' string '%s' keytype '%s' and ends with '%s'. The last character is '%v'", privateKey[0], privateKey[0:30], privateKey[5:20], privateKey[l-20:], privateKey[l-1])
+	t.Logf("privateKey starts with character '%v' string '%s' keytype '%s' and ends with '%s'. The last character is '%v'", privateKey[0], privateKey[0:30], privateKey[5:40], privateKey[l-40:], privateKey[l-1])
 	err = os.WriteFile(filepath.Join("sshtest", "id_rsa_test"), []byte(privateKey), 0600)
 	require.NoError(t, err)
 	out, err2 := exec.RunHostCommand("file", filepath.Join("sshtest", "id_rsa_test"))
