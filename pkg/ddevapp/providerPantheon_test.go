@@ -278,13 +278,13 @@ func setupSSHKey(t *testing.T, privateKey string, expectScriptDir string) error 
 	}
 	l := len(privateKey)
 
-	t.Logf("privateKey starts with character '%v' string '%s' keytype '%s' and ends with '%s'. The last character is '%v'", privateKey[0], privateKey[0:30], privateKey[5:40], privateKey[l-26:], privateKey[l-1])
+	//t.Logf("privateKey starts with character '%v' string '%s' keytype '%s' and ends with '%s'. The last character is '%v'", privateKey[0], privateKey[0:30], privateKey[5:40], privateKey[l-26:], privateKey[l-1])
 	err = os.WriteFile(filepath.Join("sshtest", "id_rsa_test"), []byte(privateKey), 0600)
 	require.NoError(t, err)
-	out, err2 := exec.RunHostCommand("file", filepath.Join("sshtest", "id_rsa_test"))
-	require.NoError(t, err2)
-	t.Logf("result of file on id_rsa_test=%s", out)
-	out, err = exec.RunHostCommand("expect", filepath.Join(expectScriptDir, "ddevauthssh.expect"), DdevBin, "./sshtest")
+	//out, err2 := exec.RunHostCommand("file", filepath.Join("sshtest", "id_rsa_test"))
+	//require.NoError(t, err2)
+	//t.Logf("result of file on id_rsa_test=%s", out)
+	out, err := exec.RunHostCommand("expect", filepath.Join(expectScriptDir, "ddevauthssh.expect"), DdevBin, "./sshtest")
 	pwd, _ := os.Getwd()
 	require.NoError(t, err, "failed to RunHostCommand expect script in dir=%s, out=%s", pwd, out)
 	require.Contains(t, out, "Identity added:")
