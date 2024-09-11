@@ -135,7 +135,6 @@ func TestPantheonPush(t *testing.T) {
 	if sshkey = os.Getenv("DDEV_PANTHEON_SSH_KEY"); sshkey == "" {
 		t.Skipf("No DDEV_PANTHEON_SSH_KEY env var has been set. Skipping %v", t.Name())
 	}
-	sshkey = strings.Replace(sshkey, "<SPLIT>", "\n", -1)
 
 	// Set up tests and give ourselves a working directory.
 	assert := asrt.New(t)
