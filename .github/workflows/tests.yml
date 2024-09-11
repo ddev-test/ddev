@@ -88,7 +88,7 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: "${{ secrets.TESTS_SERVICE_ACCOUNT_TOKEN }}"
           DDEV_ACQUIA_API_KEY: "op://test-secrets/DDEV_ACQUIA_API_KEY/credential"
           DDEV_ACQUIA_API_SECRET: "op://test-secrets/DDEV_ACQUIA_API_SECRET/credential"
-#          DDEV_ACQUIA_SSH_KEY: "op://test-secrets/DDEV_ACQUIA_SSH_KEY/private key"
+          DDEV_ACQUIA_SSH_KEY: "op://test-secrets/DDEV_ACQUIA_SSH_KEY/private key"
           DDEV_LAGOON_SSH_KEY: "op://test-secrets/DDEV_LAGOON_SSH_KEY/private key"
           DDEV_PANTHEON_API_TOKEN: "op://test-secrets/DDEV_PANTHEON_API_TOKEN/credential"
           DDEV_PANTHEON_SSH_KEY: "op://test-secrets/DDEV_PANTHEON_SSH_KEY/private key"
@@ -138,12 +138,6 @@ jobs:
           echo "MAKE_TARGET=test" >> $GITHUB_ENV
           echo "TESTARGS=-run '(Test.*(Pull|Push))'" >> $GITHUB_ENV
           echo "GOTEST_SHORT=" >> $GITHUB_ENV
-#          echo "DDEV_UPSUN_API_TOKEN=${{ secrets.DDEV_UPSUN_API_TOKEN }}" >> $GITHUB_ENV
-#          echo "DDEV_PANTHEON_API_TOKEN=${{ secrets.DDEV_PANTHEON_API_TOKEN }}" >> $GITHUB_ENV
-#          echo "DDEV_ALLOW_ACQUIA_PUSH=${{ secrets.DDEV_ALLOW_ACQUIA_PUSH }}" >> $GITHUB_ENV
-#          echo "DDEV_ACQUIA_API_KEY=${{ secrets.DDEV_ACQUIA_API_KEY }}" >> $GITHUB_ENV
-#          echo "DDEV_ACQUIA_API_SECRET=${{ secrets.DDEV_ACQUIA_API_SECRET }}" >> $GITHUB_ENV
-#          echo "DDEV_LAGOON_SSH_KEY=${{ secrets.DDEV_LAGOON_SSH_KEY }}" >> $GITHUB_ENV
         if: ${{ matrix.pull-push-test-platforms }}
 
       - name: Override environment variables for plain nginx
