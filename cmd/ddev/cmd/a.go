@@ -10,6 +10,7 @@ import (
 // This file is a.go because global config must be loaded before anybody else
 // runs their init(), as they might overwrite global_config.yaml with
 // uninitialized data
+// just a trivial change
 
 func init() {
 	globalconfig.EnsureGlobalConfig()
