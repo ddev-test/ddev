@@ -27,6 +27,10 @@ env:
   BUILDKIT_PROGRESS: plain
   DOCKER_CLI_EXPERIMENTAL: enabled
   DDEV_DEBUG: true
+  FURY_ACCOUNT: ${{ vars.FURY_ACCOUNT }}
+  HOMEBREW_EDGE_REPOSITORY: ${{ vars.HOMEBREW_EDGE_REPOSITORY }}
+  HOMEBREW_STABLE_REPOSITORY: ${{ vars.HOMEBREW_STABLE_REPOSITORY }}
+  REPOSITORY_OWNER: ${{ github.repository_owner }}
 
 jobs:
   build-most:
@@ -98,6 +102,8 @@ jobs:
           fetch-depth: 0
       - name: Build and sign windows amd64 + arm64 binaries and amd64 installer
         shell: bash
+        env:
+          DDEV_WINDOWS_SIGN: ${{ vars.DDEV_WINDOWS_SIGN }}
         run: |
           if [ "${DDEV_WINDOWS_SIGN}" != "true" ]; then echo "Warning: DDEV_WINDOWS_SIGN is not true"; fi
           make windows_install
