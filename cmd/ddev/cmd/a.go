@@ -11,6 +11,7 @@ import (
 // runs their init(), as they might overwrite global_config.yaml with
 // uninitialized data
 // just a trivial change
+// Maybe more triviality
 
 func init() {
 	globalconfig.EnsureGlobalConfig()
