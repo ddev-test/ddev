@@ -332,13 +332,13 @@ jobs:
       - name: Show github.ref
         run: echo ${{ github.ref }}
 
-      # TODO: This can be done by goreleaser these days
-      - name: Chocolatey windows release
-        if: github.repository == 'ddev/ddev' && startsWith(github.ref, 'refs/tags/v1')
-        run: |
-          pushd .gotmp/bin/windows_amd64/chocolatey
-          docker run --rm -v $PWD:/tmp/chocolatey -w /tmp/chocolatey linuturk/mono-choco push -s https://push.chocolatey.org/ --api-key "${CHOCOLATEY_API_KEY}"
-          popd
+#      # TODO: This can be done by goreleaser these days
+#      - name: Chocolatey windows release
+#        if: github.repository == 'ddev/ddev' && startsWith(github.ref, 'refs/tags/v1')
+#        run: |
+#          pushd .gotmp/bin/windows_amd64/chocolatey
+#          docker run --rm -v $PWD:/tmp/chocolatey -w /tmp/chocolatey linuturk/mono-choco push -s https://push.chocolatey.org/ --api-key "${CHOCOLATEY_API_KEY}"
+#          popd
 
   push-devcontainers:
     name: Push devcontainer feature
@@ -417,4 +417,3 @@ jobs:
           set -x
           make push VERSION="${GITHUB_REF##*/}" DOCKER_ORG=${DOCKER_ORG}
           popd >/dev/null
-
