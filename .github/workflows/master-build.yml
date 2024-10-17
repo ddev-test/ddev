@@ -267,16 +267,16 @@ jobs:
           cgo=$(".gotmp/bin/$(go env GOOS)_$(go env GOARCH)/ddev" version 2>/dev/null | awk '/cgo_enabled/ {print $2}')
           if [ "${cgo}" != "0" ]; then echo "CGO_ENABLED=${cgo} but it must be 0 in released binary" && exit 10; fi
 
-      # Goreleaser does GitHub release artifacts, homebrew, AUR, deb/rpm
-      - name: goreleaser
-        uses: goreleaser/goreleaser-action@v6
-        if: startsWith( github.ref, 'refs/tags/v1')
-        with:
-          distribution: goreleaser-pro
-          version: latest
-          args: release --clean
-        env:
-          CGO_ENABLED: 0
+#      # Goreleaser does GitHub release artifacts, homebrew, AUR, deb/rpm
+#      - name: goreleaser
+#        uses: goreleaser/goreleaser-action@v6
+#        if: startsWith( github.ref, 'refs/tags/v1')
+#        with:
+#          distribution: goreleaser-pro
+#          version: latest
+#          args: release --clean
+#        env:
+#          CGO_ENABLED: 0
 
       # Do artifacts for upload to workflow URL
       - name: Generate artifacts
