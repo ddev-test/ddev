@@ -184,10 +184,18 @@ brews:
     - name: mkcert
 
   custom_block: |
+    # Define custom download strategy
+    class NoVerifyDownloadStrategy < CurlDownloadStrategy
+      def _fetch
+        curl_download url, to: temporary_path
+      end
+    end
+
     head do
       url "https://github.com/{{ .Env.REPOSITORY_OWNER }}/ddev.git", branch: "master"
       resource "ddev-artifacts" do
         url "https://nightly.link/{{ .Env.REPOSITORY_OWNER }}/ddev/workflows/master-build/master/ddev-head-artifacts.zip"
+        using NoVerifyDownloadStrategy
       end
     end
   install: |
@@ -210,11 +218,6 @@ brews:
         bash_completion.install "ddev_bash_completion.sh" => "ddev"
         zsh_completion.install "ddev_zsh_completion.sh" => "_ddev"
         fish_completion.install "ddev_fish_completion.sh" => "ddev.fish"
-    end
-    
-    livecheck do
-      url :head
-      skip "Skipping checksum verification for HEAD builds due to changing SHA"
     end
 
   test: |
@@ -236,10 +239,18 @@ brews:
     - name: mkcert
 
   custom_block: |
+    # Define custom download strategy
+    class NoVerifyDownloadStrategy < CurlDownloadStrategy
+      def _fetch
+        curl_download url, to: temporary_path
+      end
+    end
+
     head do
       url "https://github.com/{{ .Env.REPOSITORY_OWNER }}/ddev.git", branch: "master"
       resource "ddev-artifacts" do
         url "https://nightly.link/{{ .Env.REPOSITORY_OWNER }}/ddev/workflows/master-build/master/ddev-head-artifacts.zip"
+        using NoVerifyDownloadStrategy
       end
     end
   install: |
@@ -262,11 +273,6 @@ brews:
         bash_completion.install "ddev_bash_completion.sh" => "ddev"
         zsh_completion.install "ddev_zsh_completion.sh" => "_ddev"
         fish_completion.install "ddev_fish_completion.sh" => "ddev.fish"
-    end
-    
-    livecheck do
-      url :head
-      skip "Skipping checksum verification for HEAD builds due to changing SHA"
     end
 
   test: |
