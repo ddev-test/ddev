@@ -184,10 +184,18 @@ brews:
     - name: mkcert
 
   custom_block: |
-    # Define custom download strategy
-    class NoVerifyDownloadStrategy < CurlDownloadStrategy
-      def _fetch
-        curl_download url, to: temporary_path
+    class NoVerifyDownloadStrategy < AbstractDownloadStrategy
+      def fetch(_timeout: nil, **_options)
+        ohai "Downloading #{@url}"
+        curl_download @url, to: temporary_path
+      end
+
+      def cached_location
+        temporary_path
+      end
+
+      def clear_cache
+        rm_rf(temporary_path)
       end
     end
 
@@ -240,9 +248,18 @@ brews:
 
   custom_block: |
     # Define custom download strategy
-    class NoVerifyDownloadStrategy < CurlDownloadStrategy
-      def _fetch
-        curl_download url, to: temporary_path
+    class NoVerifyDownloadStrategy < AbstractDownloadStrategy
+      def fetch(_timeout: nil, **_options)
+        ohai "Downloading #{@url}"
+        curl_download @url, to: temporary_path
+      end
+
+      def cached_location
+        temporary_path
+      end
+
+      def clear_cache
+        rm_rf(temporary_path)
       end
     end
 
