@@ -211,6 +211,11 @@ brews:
         zsh_completion.install "ddev_zsh_completion.sh" => "_ddev"
         fish_completion.install "ddev_fish_completion.sh" => "ddev.fish"
     end
+    
+    livecheck do
+      url :head
+      skip "Skipping checksum verification for HEAD builds due to changing SHA"
+    end
 
   test: |
     system "#{bin}/ddev --version"
@@ -257,6 +262,11 @@ brews:
         bash_completion.install "ddev_bash_completion.sh" => "ddev"
         zsh_completion.install "ddev_zsh_completion.sh" => "_ddev"
         fish_completion.install "ddev_fish_completion.sh" => "ddev.fish"
+    end
+    
+    livecheck do
+      url :head
+      skip "Skipping checksum verification for HEAD builds due to changing SHA"
     end
 
   test: |
