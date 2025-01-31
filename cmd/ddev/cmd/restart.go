@@ -36,6 +36,7 @@ ddev restart --all`,
 			util.Failed(err.Error())
 		}
 
+		// New commit.
 		// Look for version change and opt-in to instrumentation if it has changed.
 		err = checkDdevVersionAndOptInInstrumentation(skip)
 		if err != nil {
