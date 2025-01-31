@@ -37,10 +37,10 @@ func TestGetFreePort(t *testing.T) {
 	// Put 100 used ports in the UsedHostPorts
 	i, err := strconv.Atoi(startPort)
 	i = i + 1
-	maximum := i + 100
+	max := i + 100
 	require.NoError(t, err)
 	ports := []string{}
-	for ; i < maximum; i++ {
+	for ; i < max; i++ {
 		ports = append(ports, strconv.Itoa(i))
 	}
 	// Make sure we have a global config set up.
