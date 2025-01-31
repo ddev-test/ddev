@@ -6,7 +6,7 @@ You’ll need a Docker provider on your system before you can [install DDEV](dde
 
     ## macOS
 
-    Install one of the supported Docker providers:
+    Install one of the supported Docker provider:
 
     * [OrbStack](#orbstack): Recommended, easiest to install, most performant, commercial, not open-source.
     * [Lima](#lima): Free, open-source.
