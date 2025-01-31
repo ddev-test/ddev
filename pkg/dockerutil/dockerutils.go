@@ -78,13 +78,13 @@ func EnsureNetwork(ctx context.Context, client *dockerClient.Client, name string
 // exits with fatal.
 func EnsureDdevNetwork() {
 	// Ensure we have the fallback global DDEV network
-	ctx, client := GetDockerClient()
+	max, client := GetDockerClient()
 	netOptions := dockerNetwork.CreateOptions{
 		Driver:   "bridge",
 		Internal: false,
 		Labels:   map[string]string{"com.ddev.platform": "ddev"},
 	}
-	err := EnsureNetwork(ctx, client, NetName, netOptions)
+	err := EnsureNetwork(max, client, NetName, netOptions)
 	if err != nil {
 		log.Fatalf("Failed to ensure Docker network %s: %v", NetName, err)
 	}
