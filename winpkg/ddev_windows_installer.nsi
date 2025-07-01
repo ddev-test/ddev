@@ -4,6 +4,10 @@
 !include "FileFunc.nsh"
 !include "Sections.nsh"
 !include "x64.nsh"
+!include "WordFunc.nsh"
+
+!insertmacro WordFind
+; Remove the Trim macro since we're using our own TrimWhitespace function
 
 !ifndef TARGET_ARCH # passed on command-line
   !error "TARGET_ARCH define is missing!"
@@ -22,6 +26,7 @@ RequestExecutionLevel admin
 
 ; Variables
 Var /GLOBAL INSTALL_OPTION
+Var /GLOBAL SELECTED_DISTRO
 Var StartMenuGroup
 
 !define REG_INSTDIR_ROOT "HKLM"
@@ -43,7 +48,99 @@ InstType "Minimal"
 
 !define MUI_ABORTWARNING
 
-; Define pages first
+; Function declarations - must be before page definitions
+Function DistroSelectionPage
+    DetailPrint "Starting DistroSelectionPage..."
+    ${If} $INSTALL_OPTION != "wsl2-docker-ce"
+    ${AndIf} $INSTALL_OPTION != "wsl2-docker-desktop"
+        DetailPrint "Skipping distro selection for non-WSL2 install"
+        Abort
+    ${EndIf}
+
+    DetailPrint "Creating dialog..."
+    nsDialogs::Create 1018
+    Pop $0
+    DetailPrint "Dialog create result: $0"
+    ${If} $0 == error
+        DetailPrint "Failed to create dialog"
+        Abort
+    ${EndIf}
+
+    ; Get Ubuntu distros before creating any controls
+    Call GetUbuntuDistros
+    Pop $R0
+    DetailPrint "Got distros: [$R0]"
+    ${If} $R0 == ""
+        MessageBox MB_ICONSTOP|MB_OK "No Ubuntu-based WSL2 distributions found. Please install Ubuntu for WSL2 first."
+        Abort
+    ${EndIf}
+
+    DetailPrint "Creating label..."
+    ${NSD_CreateLabel} 0 0 100% 24u "Select your Ubuntu-based WSL2 distribution:"
+    Pop $1
+
+    DetailPrint "Creating dropdown..."
+    ${NSD_CreateDropList} 10 30u 280u 82u ""
+    Pop $2
+
+    DetailPrint "Resetting dropdown content..."
+    SendMessage $2 ${CB_RESETCONTENT} 0 0
+
+    DetailPrint "Starting to populate dropdown with: [$R0]"
+
+    ; Process the pipe-separated list
+    StrCpy $R1 $R0    ; Working copy of the list
+    StrCpy $R2 0      ; Item count
+
+    ${Do}
+        ; Find position of next pipe or end
+        StrCpy $R3 1   ; Length to extract
+        StrCpy $R4 0   ; Position
+        ${Do}
+            StrCpy $R5 $R1 1 $R4  ; Get character at position
+            ${If} $R5 == "|"
+            ${OrIf} $R5 == ""
+                ${Break}
+            ${EndIf}
+            IntOp $R4 $R4 + 1
+        ${Loop}
+
+        ; Extract the item
+        ${If} $R4 > 0
+            StrCpy $R6 $R1 $R4    ; Extract item
+            DetailPrint "Adding item: [$R6]"
+            SendMessage $2 ${CB_ADDSTRING} 0 "STR:$R6"
+            IntOp $R2 $R2 + 1
+        ${EndIf}
+
+        ; Move past the separator
+        IntOp $R4 $R4 + 1
+        StrCpy $R1 $R1 "" $R4
+
+        ; Check if we're done
+        ${If} $R1 == ""
+            ${Break}
+        ${EndIf}
+    ${Loop}
+
+    DetailPrint "Added $R2 items to dropdown"
+
+    ; Select first item if we added any
+    ${If} $R2 > 0
+        SendMessage $2 ${CB_SETCURSEL} 0 0
+    ${EndIf}
+
+    DetailPrint "About to show dialog..."
+    nsDialogs::Show
+FunctionEnd
+
+Function DistroSelectionPageLeave
+    DetailPrint "Getting selected distro..."
+    ${NSD_GetText} $2 $SELECTED_DISTRO
+    DetailPrint "Selected distro: $SELECTED_DISTRO"
+FunctionEnd
+
+; Define pages
 !insertmacro MUI_PAGE_WELCOME
 
 ; License page for DDEV
@@ -53,6 +150,9 @@ InstType "Minimal"
 
 ; Custom install type selection
 Page custom InstallChoicePage InstallChoicePageLeave
+
+; Add WSL2 distro selection page
+Page custom DistroSelectionPage DistroSelectionPageLeave
 
 ; Directory page
 !define MUI_PAGE_CUSTOMFUNCTION_PRE DirectoryPre
@@ -258,12 +358,79 @@ Section Uninstall
     SetAutoClose true
 SectionEnd
 
+Function GetUbuntuDistros
+    DetailPrint "Starting GetUbuntuDistros..."
+    StrCpy $R0 ""  ; Result string
+
+    DetailPrint "Checking registry key..."
+    SetRegView 64
+    ClearErrors
+    EnumRegKey $R1 HKCU "Software\Microsoft\Windows\CurrentVersion\Lxss" 0
+    ${If} ${Errors}
+        DetailPrint "Error accessing Lxss registry key"
+        Push ""
+        Return
+    ${EndIf}
+    DetailPrint "Registry key exists and is accessible"
+
+    ; Count total number of keys first
+    StrCpy $R1 0   ; Index for enumeration
+    StrCpy $R5 0   ; Total count
+    count_loop:
+        ClearErrors
+        EnumRegKey $R2 HKCU "Software\Microsoft\Windows\CurrentVersion\Lxss" $R1
+        ${If} ${Errors}
+        ${OrIf} $R2 == ""
+            Goto count_done
+        ${EndIf}
+        IntOp $R5 $R5 + 1
+        IntOp $R1 $R1 + 1
+        Goto count_loop
+    count_done:
+    DetailPrint "Found $R5 total WSL distributions"
+
+    ; Now enumerate and check each key
+    StrCpy $R1 0   ; Reset index
+    ${While} $R1 < $R5
+        ClearErrors
+        EnumRegKey $R2 HKCU "Software\Microsoft\Windows\CurrentVersion\Lxss" $R1
+        ${If} ${Errors}
+            DetailPrint "Error enumerating key at index $R1"
+            Goto next_key
+        ${EndIf}
+
+        ClearErrors
+        ReadRegStr $R3 HKCU "Software\Microsoft\Windows\CurrentVersion\Lxss\$R2" "DistributionName"
+        ${If} ${Errors}
+            DetailPrint "Error reading DistributionName for key $R2"
+            Goto next_key
+        ${EndIf}
+
+        ; Check if it starts with "Ubuntu"
+        StrCpy $R4 $R3 6
+        ${If} $R4 == "Ubuntu"
+            DetailPrint "Found Ubuntu distribution: $R3"
+            ${If} $R0 != ""
+                StrCpy $R0 "$R0|"
+            ${EndIf}
+            StrCpy $R0 "$R0$R3"
+        ${EndIf}
+
+        next_key:
+        IntOp $R1 $R1 + 1
+    ${EndWhile}
+
+    DetailPrint "Registry enumeration complete. Final list: [$R0]"
+    Push $R0
+FunctionEnd
+
+
 Function InstallWSL2CommonSetup
     ; Check for WSL2
     DetailPrint "Checking WSL2 version..."
     nsExec::ExecToStack 'wsl.exe -l -v'
-    Pop $1  ; error code
-    Pop $0  ; output
+    Pop $1
+    Pop $0
     DetailPrint "WSL version check output: $0"
     DetailPrint "WSL version check exit code: $1"
     ${If} $1 != 0
@@ -271,33 +438,19 @@ Function InstallWSL2CommonSetup
         Abort
     ${EndIf}
 
-    ; Check for Ubuntu-based default distro
-    DetailPrint "Checking for Ubuntu-based default distro..."
-    nsExec::ExecToStack 'wsl bash -c "cat /etc/os-release | grep -i ^NAME="'
-    Pop $1  ; error code
-    Pop $0  ; output
-    DetailPrint "WSL Output: $0"
-    DetailPrint "Exit Code: $1"
-    ${If} $1 != 0
-        MessageBox MB_ICONSTOP|MB_OK "Could not check your default WSL2 distro. Please ensure WSL is working."
-        Abort
-    ${EndIf}
-    ${If} $0 == ""
-        MessageBox MB_ICONSTOP|MB_OK "Could not detect distro name. Please ensure WSL is working."
-        Abort
-    ${EndIf}
-    nsExec::ExecToStack 'wsl bash -c "cat /etc/os-release | grep -i ^NAME= | grep -i ubuntu"'
+    ; Check for Ubuntu in selected distro
+    DetailPrint "Checking selected distro $SELECTED_DISTRO..."
+    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO bash -c "cat /etc/os-release | grep -i ^NAME="'
     Pop $1
     Pop $0
     ${If} $1 != 0
-        MessageBox MB_ICONSTOP|MB_OK "Your default WSL2 distro is not Ubuntu-based. Please set Ubuntu as your default WSL2 distro."
+        MessageBox MB_ICONSTOP|MB_OK "Could not access the selected distro. Please ensure it's working properly."
         Abort
     ${EndIf}
-    DetailPrint "Ubuntu-based distro detected successfully."
 
     ; Check for WSL2 kernel
-    DetailPrint "Checking for WSL2..."
-    nsExec::ExecToStack 'wsl uname -v'
+    DetailPrint "Checking WSL2 kernel..."
+    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO uname -v'
     Pop $1  ; error code
     Pop $0  ; output
     DetailPrint "WSL kernel version: $0"
@@ -317,7 +470,7 @@ Function InstallWSL2CommonSetup
 
     ; Check for non-root default user
     DetailPrint "Checking for non-root user..."
-    nsExec::ExecToStack 'wsl whoami'
+    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO whoami'
     Pop $1  ; error code
     Pop $0  ; output
     DetailPrint "Current user: $0"
@@ -333,19 +486,19 @@ Function InstallWSL2CommonSetup
 
     ; Remove old Docker versions first
     DetailPrint "Removing old Docker versions if present..."
-    nsExec::ExecToStack 'wsl -u root bash -c "apt-get remove -y -qq docker docker-engine docker.io containerd runc >/dev/null 2>&1"'
+    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root bash -c "apt-get remove -y -qq docker docker-engine docker.io containerd runc >/dev/null 2>&1"'
     Pop $1
     Pop $0
 
     ; apt-get upgrade
     DetailPrint "Doing apt-get upgrade..."
-    nsExec::ExecToStack 'wsl -u root bash -c "apt-get update && apt-get upgrade -y >/dev/null 2>&1"'
+    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root bash -c "apt-get update && apt-get upgrade -y >/dev/null 2>&1"'
     Pop $1
     Pop $0
 
     ; Install linux packages
     DetailPrint "Installing linux packages..."
-    nsExec::ExecToStack 'wsl -u root apt-get install -y ca-certificates curl gnupg gnupg2 libsecret-1-0 lsb-release pass'
+    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root apt-get install -y ca-certificates curl gnupg gnupg2 libsecret-1-0 lsb-release pass'
     Pop $1
     Pop $0
     ${If} $1 != 0
@@ -355,13 +508,13 @@ Function InstallWSL2CommonSetup
 
     ; Create keyrings directory if it doesn't exist
     DetailPrint "Setting up keyrings directory..."
-    nsExec::ExecToStack 'wsl -u root install -m 0755 -d /etc/apt/keyrings'
+    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root install -m 0755 -d /etc/apt/keyrings'
     Pop $1
     Pop $0
 
     ; Add Docker GPG key
     DetailPrint "Adding Docker repository key..."
-    nsExec::ExecToStack 'wsl -u root bash -c "rm -f /etc/apt/keyrings/docker.gpg && mkdir -p /etc/apt/keyrings && curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg"'
+    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root bash -c "rm -f /etc/apt/keyrings/docker.gpg && mkdir -p /etc/apt/keyrings && curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg"'
     Pop $1
     Pop $0
     ${If} $1 != 0
@@ -371,7 +524,7 @@ Function InstallWSL2CommonSetup
 
     ; Add Docker repository
     DetailPrint "Adding Docker repository..."
-    nsExec::ExecToStack 'wsl -u root -e bash -c "echo deb [arch=$$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $$(lsb_release -cs) stable | tee /etc/apt/sources.list.d/docker.list > /dev/null 2>&1"'
+    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root -e bash -c "echo deb [arch=$$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $$(lsb_release -cs) stable | tee /etc/apt/sources.list.d/docker.list > /dev/null 2>&1"'
     Pop $1
     Pop $0
     ${If} $1 != 0
@@ -381,7 +534,7 @@ Function InstallWSL2CommonSetup
 
     ; Add DDEV GPG key
     DetailPrint "Adding DDEV repository key..."
-    nsExec::ExecToStack 'wsl -u root bash -c "curl -fsSL https://pkg.ddev.com/apt/gpg.key | gpg --dearmor | tee /etc/apt/keyrings/ddev.gpg > /dev/null"'
+    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root bash -c "curl -fsSL https://pkg.ddev.com/apt/gpg.key | gpg --dearmor | tee /etc/apt/keyrings/ddev.gpg > /dev/null"'
     Pop $1
     Pop $0
     ${If} $1 != 0
@@ -391,7 +544,7 @@ Function InstallWSL2CommonSetup
 
     ; Add DDEV repository
     DetailPrint "Adding DDEV repository..."
-    nsExec::ExecToStack 'wsl -u root -e bash -c "echo \"deb [signed-by=/etc/apt/keyrings/ddev.gpg] https://pkg.ddev.com/apt/ * *\" > /etc/apt/sources.list.d/ddev.list"'
+    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root -e bash -c "echo \"deb [signed-by=/etc/apt/keyrings/ddev.gpg] https://pkg.ddev.com/apt/ * *\" > /etc/apt/sources.list.d/ddev.list"'
     Pop $1
     Pop $0
     ${If} $1 != 0
@@ -401,7 +554,7 @@ Function InstallWSL2CommonSetup
 
     ; Update package lists
     DetailPrint "Updating package lists..."
-    nsExec::ExecToStack 'wsl -u root bash -c "DEBIAN_FRONTEND=noninteractive apt-get update 2>&1"'
+    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root bash -c "DEBIAN_FRONTEND=noninteractive apt-get update 2>&1"'
     Pop $1
     Pop $0
     ${If} $1 != 0
@@ -417,7 +570,7 @@ Function InstallWSL2DockerCE
     ; Install packages for Docker CE
     DetailPrint "Installing packages..."
     StrCpy $0 "ddev docker-ce docker-ce-cli containerd.io wslu"
-    nsExec::ExecToStack 'wsl -u root bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y $0 2>&1"'
+    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y $0 2>&1"'
     Pop $1
     Pop $2
     ${If} $1 != 0
@@ -427,7 +580,7 @@ Function InstallWSL2DockerCE
 
     ; Detect default user in WSL2 (use wsl whoami)
     DetailPrint "Detecting default user in WSL2..."
-    nsExec::ExecToStack 'wsl whoami'
+    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO whoami'
     Pop $1
     Pop $0
     DetailPrint "whoami output: $0"
@@ -439,24 +592,24 @@ Function InstallWSL2DockerCE
 
     ; Add user to docker group using root (no sudo)
     DetailPrint "Adding user $9 to docker group with root..."
-    nsExec::ExecToStack 'wsl -u root bash -c "usermod -aG docker $9"'
+    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root bash -c "usermod -aG docker $9"'
     Pop $1
     Pop $0
     DetailPrint "usermod output: $0"
 
     ; Install mkcert root CA in WSL
-    nsExec::ExecToStack 'wsl -u root mkcert -install'
+    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root mkcert -install'
     Pop $1
     Pop $0
 
     ; Remove old .docker config if present
-    nsExec::ExecToStack 'wsl rm -rf ~/.docker'
+    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO rm -rf ~/.docker'
     Pop $1
     Pop $0
 
     ; Show DDEV version
     DetailPrint "Verifying DDEV installation..."
-    nsExec::ExecToStack 'wsl ddev version'
+    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO ddev version'
     Pop $1
     Pop $0
     ${If} $1 != 0
@@ -475,7 +628,7 @@ Function InstallWSL2DockerDesktop
     ; Install packages for Docker Desktop (no docker-ce, only docker-ce-cli and wslu)
     DetailPrint "Installing packages..."
     StrCpy $0 "ddev docker-ce-cli wslu"
-    nsExec::ExecToStack 'wsl -u root bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y $0 2>&1"'
+    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y $0 2>&1"'
     Pop $1
     Pop $2
     ${If} $1 != 0
@@ -484,18 +637,18 @@ Function InstallWSL2DockerDesktop
     ${EndIf}
 
     ; Install mkcert root CA in WSL
-    nsExec::ExecToStack 'wsl -u root mkcert -install'
+    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root mkcert -install'
     Pop $1
     Pop $0
 
     ; Remove old .docker config if present
-    nsExec::ExecToStack 'wsl rm -rf ~/.docker'
+    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO rm -rf ~/.docker'
     Pop $1
     Pop $0
 
     ; Show DDEV version
     DetailPrint "Verifying DDEV installation..."
-    nsExec::ExecToStack 'wsl ddev version'
+    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO ddev version'
     Pop $1
     Pop $0
     ${If} $1 != 0
