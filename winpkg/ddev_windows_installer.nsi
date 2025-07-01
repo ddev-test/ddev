@@ -87,16 +87,16 @@ Function InstallChoicePage
         Abort
     ${EndIf}
 
-    ${NSD_CreateLabel} 0 0 100% 36u "Choose your preferred DDEV installation type:$\n(You can change Docker provider later using ddev config global)"
+    ${NSD_CreateLabel} 0 0 100% 36u "Choose your DDEV installation type:"
     Pop $1
 
     ${NSD_CreateRadioButton} 10 40u 98% 24u "WSL2 with Docker CE (Recommended)$\nInstalls Docker CE inside WSL2 for best performance"
     Pop $2
 
-    ${NSD_CreateRadioButton} 10 70u 98% 24u "WSL2 with Docker Desktop$\nUse existing Docker Desktop with WSL2 backend"
+    ${NSD_CreateRadioButton} 10 70u 98% 24u "WSL2 with Docker Desktop or Rancher Desktop$\nUse Windows-installed Docker Desktop or Rancher Desktop with WSL2 backend"
     Pop $3
 
-    ${NSD_CreateRadioButton} 10 100u 98% 24u "Traditional Windows$\nClassic Windows installation without WSL2"
+    ${NSD_CreateRadioButton} 10 100u 98% 24u "Traditional Windows$\nClassic Windows installation without WSL2 (Requires Docker Desktop or Rancher Desktop"
     Pop $4
 
     ${NSD_SetState} $2 ${BST_CHECKED}
