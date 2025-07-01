@@ -13,7 +13,7 @@
   !error "TARGET_ARCH define is missing!"
 !endif
 
-Name "DDEV Windows Installer"
+Name "DDEV"
 OutFile "..\.gotmp\bin\windows_${TARGET_ARCH}\ddev_windows_${TARGET_ARCH}_installer.exe"
 
 ; Use proper Program Files directory for 64-bit applications
@@ -279,8 +279,8 @@ Section -Post
     WriteRegStr ${REG_INSTDIR_ROOT} "${REG_INSTDIR_KEY}" "" "$INSTDIR\ddev.exe"
     WriteRegStr ${REG_INSTDIR_ROOT} "${REG_INSTDIR_KEY}" "Path" "$INSTDIR"
 
-    ; Write uninstaller keys
-    WriteRegStr ${REG_UNINST_ROOT} "${REG_UNINST_KEY}" "DisplayName" "$(^Name)"
+    ; Write uninstaller keys with correct product name
+    WriteRegStr ${REG_UNINST_ROOT} "${REG_UNINST_KEY}" "DisplayName" "${PRODUCT_NAME}"
     WriteRegStr ${REG_UNINST_ROOT} "${REG_UNINST_KEY}" "UninstallString" "$INSTDIR\ddev_uninstall.exe"
     WriteRegStr ${REG_UNINST_ROOT} "${REG_UNINST_KEY}" "DisplayIcon" "$INSTDIR\Icons\ddev.ico"
     WriteRegStr ${REG_UNINST_ROOT} "${REG_UNINST_KEY}" "DisplayVersion" "${PRODUCT_VERSION}"
@@ -707,7 +707,7 @@ Function .onInit
 
     ; Initialize directory to proper Program Files location
     ${If} ${RunningX64}
-        StrCpy $INSTDIR "$PROGRAMFILES64\${PRODUCT_NAME}"
+        StrCpy $INSTDIR "$PROGRAMFILES64\DDEV"
     ${Else}
         MessageBox MB_ICONSTOP|MB_OK "This installer is for 64-bit Windows only."
         Abort
