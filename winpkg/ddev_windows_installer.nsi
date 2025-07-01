@@ -196,7 +196,7 @@ Function InstallChoicePage
     ${NSD_CreateRadioButton} 10 70u 98% 24u "WSL2 with Docker Desktop or Rancher Desktop$\nUse Windows-installed Docker Desktop or Rancher Desktop with WSL2 backend"
     Pop $3
 
-    ${NSD_CreateRadioButton} 10 100u 98% 24u "Traditional Windows$\nClassic Windows installation without WSL2 (Requires Docker Desktop or Rancher Desktop"
+    ${NSD_CreateRadioButton} 10 100u 98% 24u "Traditional Windows$\nClassic Windows installation without WSL2 (Requires Docker Desktop or Rancher Desktop)"
     Pop $4
 
     ${NSD_SetState} $2 ${BST_CHECKED}
