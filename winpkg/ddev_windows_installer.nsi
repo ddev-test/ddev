@@ -160,8 +160,16 @@ SectionGroup /e "${PRODUCT_NAME}"
 
     Section "Add to PATH" SecAddToPath
         SectionIn 1 2 3
-        EnVar::SetHKLM
-        EnVar::AddValue "Path" "$INSTDIR"
+        ; Only add to PATH if not already present
+        ReadRegStr $R0 HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "Path"
+        Push $R0
+        Push "$INSTDIR"
+        Call StrContains
+        Pop $R1
+        ${If} $R1 == ""
+            EnVar::SetHKLM
+            EnVar::AddValue "Path" "$INSTDIR"
+        ${EndIf}
     SectionEnd
 SectionGroupEnd
 
