@@ -129,9 +129,10 @@ SectionGroup /e "${PRODUCT_NAME}"
         SetOutPath "$INSTDIR"
         SetOverwrite on
 
-        ; Install core files for all installation types
-        File "..\.gotmp\bin\windows_${TARGET_ARCH}\ddev.exe"
+        ; Install ddev-hostname.exe & mkcert.exe for all installation types
         File "..\.gotmp\bin\windows_${TARGET_ARCH}\ddev-hostname.exe"
+        File "..\.gotmp\bin\windows_${TARGET_ARCH}\mkcert.exe"
+        File "..\.gotmp\bin\windows_${TARGET_ARCH}\mkcert_license.txt"
         File /oname=license.txt "..\LICENSE"
 
         ; Install icons
@@ -177,10 +178,6 @@ SectionGroup /e "mkcert"
         SectionIn 1 2
         SetOutPath "$INSTDIR"
         SetOverwrite try
-
-        ; Copy mkcert files
-        File "..\.gotmp\bin\windows_${TARGET_ARCH}\mkcert.exe"
-        File "..\.gotmp\bin\windows_${TARGET_ARCH}\mkcert_license.txt"
 
         ; Install icons
         SetOutPath "$INSTDIR\Icons"
@@ -229,6 +226,37 @@ Section -Post
     !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
     CreateShortCut "$SMPROGRAMS\$StartMenuGroup\Uninstall ${PRODUCT_NAME}.lnk" "$INSTDIR\ddev_uninstall.exe"
     !insertmacro MUI_STARTMENU_WRITE_END
+SectionEnd
+
+Section Uninstall
+    ; Remove install directory from system PATH
+    EnVar::SetHKLM
+    EnVar::DeleteValue "Path" "$INSTDIR"
+
+    ; Remove installed files (ignore errors if not found)
+    Delete "$INSTDIR\ddev.exe"
+    Delete "$INSTDIR\ddev-hostname.exe"
+    Delete "$INSTDIR\mkcert.exe"
+    Delete "$INSTDIR\mkcert_license.txt"
+    Delete "$INSTDIR\license.txt"
+
+    ; Remove icons and links directories if present
+    RMDir /r "$INSTDIR\Icons"
+    RMDir /r "$INSTDIR\Links"
+
+    ; Remove install directory if empty
+    RMDir "$INSTDIR"
+
+    ; Remove start menu shortcuts
+    !insertmacro MUI_STARTMENU_GETFOLDER "Application" $StartMenuGroup
+    RMDir /r "$SMPROGRAMS\$StartMenuGroup"
+
+    ; Remove registry keys
+    DeleteRegKey ${REG_UNINST_ROOT} "${REG_UNINST_KEY}"
+    DeleteRegKey ${REG_INSTDIR_ROOT} "${REG_INSTDIR_KEY}"
+
+    ; Close uninstaller window
+    SetAutoClose true
 SectionEnd
 
 Function CheckWSL2Requirements
