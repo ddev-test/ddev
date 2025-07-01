@@ -272,40 +272,6 @@ SectionGroup /e "${PRODUCT_NAME}"
     SectionEnd
 SectionGroupEnd
 
-SectionGroup /e "mkcert"
-    Section "mkcert" SecMkcert
-        SectionIn 1 2
-        SetOutPath "$INSTDIR"
-        SetOverwrite try
-
-        ; Install icons
-        SetOutPath "$INSTDIR\Icons"
-        SetOverwrite try
-        File /oname=ca-install.ico "graphics\ca-install.ico"
-        File /oname=ca-uninstall.ico "graphics\ca-uninstall.ico"
-
-        ; Create shortcuts
-        CreateShortcut "$INSTDIR\mkcert install.lnk" "$INSTDIR\mkcert.exe" "-install" "$INSTDIR\Icons\ca-install.ico"
-        CreateShortcut "$INSTDIR\mkcert uninstall.lnk" "$INSTDIR\mkcert.exe" "-uninstall" "$INSTDIR\Icons\ca-uninstall.ico"
-
-        !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
-        CreateDirectory "$SMPROGRAMS\$StartMenuGroup\mkcert"
-        CreateShortCut "$SMPROGRAMS\$StartMenuGroup\mkcert\mkcert install trusted https.lnk" "$INSTDIR\mkcert.exe" "-install" "$INSTDIR\Icons\ca-install.ico"
-        CreateShortCut "$SMPROGRAMS\$StartMenuGroup\mkcert\mkcert uninstall trusted https.lnk" "$INSTDIR\mkcert.exe" "-uninstall" "$INSTDIR\Icons\ca-uninstall.ico"
-        !insertmacro MUI_STARTMENU_WRITE_END
-    SectionEnd
-
-    Section "Setup mkcert" SecMkcertSetup
-        SectionIn 1 2
-        MessageBox MB_ICONINFORMATION|MB_OK "Now running mkcert to enable trusted https. Please accept the mkcert dialog box that may follow."
-        nsExec::ExecToLog '"$INSTDIR\mkcert.exe" -install'
-        Pop $R0
-        ${If} $R0 = 0
-            WriteRegDWORD ${REG_UNINST_ROOT} "${REG_UNINST_KEY}" "NSIS:mkcertSetup" 1
-        ${EndIf}
-    SectionEnd
-SectionGroupEnd
-
 Section -Post
     WriteUninstaller "$INSTDIR\ddev_uninstall.exe"
 
@@ -332,30 +298,41 @@ Section Uninstall
     EnVar::SetHKLM
     EnVar::DeleteValue "Path" "$INSTDIR"
 
-    ; Remove installed files (ignore errors if not found)
+    ; Remove all installed files
     Delete "$INSTDIR\ddev.exe"
     Delete "$INSTDIR\ddev-hostname.exe"
     Delete "$INSTDIR\mkcert.exe"
     Delete "$INSTDIR\mkcert_license.txt"
     Delete "$INSTDIR\license.txt"
+    Delete "$INSTDIR\mkcert install.lnk"
+    Delete "$INSTDIR\mkcert uninstall.lnk"
+    Delete "$INSTDIR\ddev_uninstall.exe"
 
-    ; Remove icons and links directories if present
+    ; Remove icons and links directories
     RMDir /r "$INSTDIR\Icons"
     RMDir /r "$INSTDIR\Links"
 
-    ; Remove install directory if empty
-    RMDir "$INSTDIR"
-
-    ; Remove start menu shortcuts
+    ; Remove all installed shortcuts
     !insertmacro MUI_STARTMENU_GETFOLDER "Application" $StartMenuGroup
-    RMDir /r "$SMPROGRAMS\$StartMenuGroup"
+    Delete "$SMPROGRAMS\$StartMenuGroup\DDEV.lnk"
+    Delete "$SMPROGRAMS\$StartMenuGroup\DDEV Website.lnk"
+    Delete "$SMPROGRAMS\$StartMenuGroup\DDEV Documentation.lnk"
+    Delete "$SMPROGRAMS\$StartMenuGroup\Uninstall ${PRODUCT_NAME}.lnk"
+    RMDir /r "$SMPROGRAMS\$StartMenuGroup\mkcert"
+    RMDir "$SMPROGRAMS\$StartMenuGroup"
 
     ; Remove registry keys
     DeleteRegKey ${REG_UNINST_ROOT} "${REG_UNINST_KEY}"
     DeleteRegKey ${REG_INSTDIR_ROOT} "${REG_INSTDIR_KEY}"
 
-    ; Close uninstaller window
+    ; Remove install directory if empty
+    RMDir "$INSTDIR"
+
+    ; Self-delete the uninstaller using ping approach
     SetAutoClose true
+    ${If} ${FileExists} "$INSTDIR"
+        ExecWait 'cmd.exe /C ping 127.0.0.1 -n 2 && del /F /Q "$EXEPATH"'
+    ${EndIf}
 SectionEnd
 
 Function GetUbuntuDistros
