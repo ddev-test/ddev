@@ -22,7 +22,6 @@ RequestExecutionLevel admin
 
 ; Variables
 Var /GLOBAL INSTALL_OPTION
-Var /GLOBAL DOCKER_OPTION
 Var StartMenuGroup
 
 !define REG_INSTDIR_ROOT "HKLM"
@@ -524,11 +523,12 @@ Function InstallTraditionalWindows
     CreateDirectory "$INSTDIR\Links"
     CreateDirectory "$SMPROGRAMS\$StartMenuGroup"
 
-    WriteIniStr "$INSTDIR\Links\${PRODUCT_WEB_SITE}.url" "InternetShortcut" "URL" "${PRODUCT_WEB_SITE_URL}"
-    CreateShortCut "$SMPROGRAMS\$StartMenuGroup\${PRODUCT_WEB_SITE}.lnk" "$INSTDIR\Links\${PRODUCT_WEB_SITE}.url" "" "$INSTDIR\Icons\ddev.ico"
+    ; Use literal names for website and documentation
+    WriteIniStr "$INSTDIR\Links\DDEV Website.url" "InternetShortcut" "URL" "https://ddev.com"
+    CreateShortCut "$SMPROGRAMS\$StartMenuGroup\DDEV Website.lnk" "$INSTDIR\Links\DDEV Website.url" "" "$INSTDIR\Icons\ddev.ico"
 
-    WriteIniStr "$INSTDIR\Links\${PRODUCT_DOCUMENTATION}.url" "InternetShortcut" "URL" "${PRODUCT_DOCUMENTATION_URL}"
-    CreateShortCut "$SMPROGRAMS\$StartMenuGroup\${PRODUCT_DOCUMENTATION}.lnk" "$INSTDIR\Links\${PRODUCT_DOCUMENTATION}.url" "" "$INSTDIR\Icons\ddev.ico"
+    WriteIniStr "$INSTDIR\Links\DDEV Documentation.url" "InternetShortcut" "URL" "https://ddev.readthedocs.io"
+    CreateShortCut "$SMPROGRAMS\$StartMenuGroup\DDEV Documentation.lnk" "$INSTDIR\Links\DDEV Documentation.url" "" "$INSTDIR\Icons\ddev.ico"
 
     !insertmacro MUI_STARTMENU_WRITE_END
 
@@ -601,23 +601,6 @@ done:
     Pop $R0
 FunctionEnd
 
-; Helper: Trim leading spaces from a string
-Function TrimLeft
-    Exch $R0
-    Push $R1
-    StrCpy $R1 0
-    loop_trimleft:
-        StrCpy $R2 $R0 1 $R1
-        StrCmp $R2 " " trimmed
-        StrCmp $R2 "" done_trimleft
-        IntOp $R1 $R1 + 1
-        Goto loop_trimleft
-    trimmed:
-        StrCpy $R0 $R0 "" $R1
-    done_trimleft:
-        Pop $R1
-        Exch $R0
-FunctionEnd
 
 ; Helper: Trim trailing newline and carriage return from a string
 Function TrimNewline
