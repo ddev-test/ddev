@@ -254,9 +254,7 @@ Function CheckWSL2Requirements
     DetailPrint "WSL2 requirements satisfied."
 FunctionEnd
 
-Function InstallWSL2DockerCE
-    DetailPrint "DEBUG: Starting InstallWSL2DockerCE"
-
+Function InstallWSL2CommonSetup
     ; Check for WSL2
     DetailPrint "Checking WSL2 version..."
     nsExec::ExecToStack 'wsl.exe -l -v'
@@ -377,7 +375,6 @@ Function InstallWSL2DockerCE
         Abort
     ${EndIf}
 
-    ; --- Common setup (DDEV repo, apt update, install) ---
     ; Add DDEV GPG key
     DetailPrint "Adding DDEV repository key..."
     nsExec::ExecToStack 'wsl -u root bash -c "curl -fsSL https://pkg.ddev.com/apt/gpg.key | gpg --dearmor | tee /etc/apt/keyrings/ddev.gpg > /dev/null"'
@@ -407,6 +404,11 @@ Function InstallWSL2DockerCE
         MessageBox MB_ICONSTOP|MB_OK "Failed to update package lists. Error: $0"
         Abort
     ${EndIf}
+FunctionEnd
+
+Function InstallWSL2DockerCE
+    DetailPrint "DEBUG: Starting InstallWSL2DockerCE"
+    Call InstallWSL2CommonSetup
 
     ; Install packages for Docker CE
     DetailPrint "Installing packages..."
@@ -464,108 +466,7 @@ FunctionEnd
 
 Function InstallWSL2DockerDesktop
     DetailPrint "DEBUG: Starting InstallWSL2DockerDesktop"
-
-    ; Check for WSL2
-    DetailPrint "Checking WSL2 version..."
-    nsExec::ExecToStack 'wsl.exe -l -v'
-    Pop $1  ; error code
-    Pop $0  ; output
-    DetailPrint "WSL version check output: $0"
-    DetailPrint "WSL version check exit code: $1"
-    ${If} $1 != 0
-        MessageBox MB_ICONSTOP|MB_OK "WSL2 does not seem to be installed. Please install WSL2 and Ubuntu before running this installer."
-        Abort
-    ${EndIf}
-
-    ; Check for Ubuntu-based default distro
-    DetailPrint "Checking for Ubuntu-based default distro..."
-    nsExec::ExecToStack 'wsl bash -c "cat /etc/os-release | grep -i ^NAME="'
-    Pop $1  ; error code
-    Pop $0  ; output
-    DetailPrint "WSL Output: $0"
-    DetailPrint "Exit Code: $1"
-    ${If} $1 != 0
-        MessageBox MB_ICONSTOP|MB_OK "Could not check your default WSL2 distro. Please ensure WSL is working."
-        Abort
-    ${EndIf}
-    ${If} $0 == ""
-        MessageBox MB_ICONSTOP|MB_OK "Could not detect distro name. Please ensure WSL is working."
-        Abort
-    ${EndIf}
-    nsExec::ExecToStack 'wsl bash -c "cat /etc/os-release | grep -i ^NAME= | grep -i ubuntu"'
-    Pop $1
-    Pop $0
-    ${If} $1 != 0
-        MessageBox MB_ICONSTOP|MB_OK "Your default WSL2 distro is not Ubuntu-based. Please set Ubuntu as your default WSL2 distro."
-        Abort
-    ${EndIf}
-    DetailPrint "Ubuntu-based distro detected successfully."
-
-    ; Check for WSL2 kernel
-    DetailPrint "Checking for WSL2..."
-    nsExec::ExecToStack 'wsl uname -v'
-    Pop $1  ; error code
-    Pop $0  ; output
-    DetailPrint "WSL kernel version: $0"
-    ${If} $1 != 0
-        MessageBox MB_ICONSTOP|MB_OK "Could not check WSL version. Please ensure WSL is working."
-        Abort
-    ${EndIf}
-    ${If} $0 == ""
-        MessageBox MB_ICONSTOP|MB_OK "Could not detect WSL version. Please ensure WSL is working."
-        Abort
-    ${EndIf}
-    ${If} $0 == "WSL"
-        MessageBox MB_ICONSTOP|MB_OK "Your default WSL distro is not WSL2. Please upgrade to WSL2."
-        Abort
-    ${EndIf}
-    DetailPrint "WSL2 detected successfully."
-
-    ; Check for non-root default user
-    DetailPrint "Checking for non-root user..."
-    nsExec::ExecToStack 'wsl whoami'
-    Pop $1  ; error code
-    Pop $0  ; output
-    DetailPrint "Current user: $0"
-    ${If} $1 != 0
-        MessageBox MB_ICONSTOP|MB_OK "Could not check WSL user. Please ensure WSL is working."
-        Abort
-    ${EndIf}
-    ${If} $0 == "root"
-        MessageBox MB_ICONSTOP|MB_OK "Default user in your WSL2 distro is root. Please configure an ordinary default user."
-        Abort
-    ${EndIf}
-    DetailPrint "Non-root user detected successfully."
-
-    ; Add DDEV GPG key
-    DetailPrint "Adding DDEV repository key..."
-    nsExec::ExecToStack 'wsl -u root bash -c "curl -fsSL https://pkg.ddev.com/apt/gpg.key | gpg --dearmor | tee /etc/apt/keyrings/ddev.gpg > /dev/null"'
-    Pop $1
-    Pop $0
-    ${If} $1 != 0
-        MessageBox MB_ICONSTOP|MB_OK "Failed to add DDEV repository key. Error: $0"
-        Abort
-    ${EndIf}
-
-    ; Add DDEV repository
-    DetailPrint "Adding DDEV repository..."
-    nsExec::ExecToStack 'wsl -u root -e bash -c "echo \"deb [signed-by=/etc/apt/keyrings/ddev.gpg] https://pkg.ddev.com/apt/ * *\" > /etc/apt/sources.list.d/ddev.list"'
-    Pop $1
-    Pop $0
-    ${If} $1 != 0
-        MessageBox MB_ICONSTOP|MB_OK "Failed to add DDEV repository. Please check the logs."
-        Abort
-    ${EndIf}
-
-    ; Update package lists
-    DetailPrint "Updating package lists..."
-    nsExec::ExecToStack 'wsl -u root bash -c "DEBIAN_FRONTEND=noninteractive apt-get update 2>&1"'
-    Pop $1
-    Pop $0
-    ${If} $1 != 0
-        MessageBox MB_ICONSTOP|MB_OK "Failed to update package lists. Error: $0"
-        Abort
-    ${EndIf}
+    Call InstallWSL2CommonSetup
 
     ; Install packages for Docker Desktop (no docker-ce, only docker-ce-cli and wslu)
     DetailPrint "Installing packages..."
