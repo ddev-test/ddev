@@ -143,7 +143,6 @@ SectionGroup /e "${PRODUCT_NAME}"
         ${If} $INSTALL_OPTION == "traditional"
             Call InstallTraditionalWindows
         ${Else}
-            Call CheckWSL2Requirements
             ${If} $INSTALL_OPTION == "wsl2-docker-ce"
                 Call InstallWSL2DockerCE
             ${Else}
@@ -258,28 +257,6 @@ Section Uninstall
     ; Close uninstaller window
     SetAutoClose true
 SectionEnd
-
-Function CheckWSL2Requirements
-    DetailPrint "Checking WSL2 requirements..."
-
-    ; Check if WSL is installed
-    nsExec::ExecToLog 'wsl --status'
-    Pop $0
-    ${If} $0 != 0
-        MessageBox MB_ICONSTOP|MB_OK "WSL2 is not installed. Please install WSL2 first by running 'wsl --install' in an administrative PowerShell window."
-        Abort "WSL2 not installed"
-    ${EndIf}
-
-    ; Check WSL2 version
-    nsExec::ExecToLog 'wsl --set-default-version 2'
-    Pop $0
-    ${If} $0 != 0
-        MessageBox MB_ICONSTOP|MB_OK "Failed to set WSL2 as default. Please ensure WSL2 is properly installed."
-        Abort "WSL2 setup failed"
-    ${EndIf}
-
-    DetailPrint "WSL2 requirements satisfied."
-FunctionEnd
 
 Function InstallWSL2CommonSetup
     ; Check for WSL2
