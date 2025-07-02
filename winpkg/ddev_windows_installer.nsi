@@ -427,8 +427,8 @@ Function InstallWSL2CommonSetup
     ; Check for WSL2 kernel
     DetailPrint "Checking WSL2 kernel..."
     nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO uname -v'
-    Pop $1  ; error code
-    Pop $0  ; output
+    Pop $1
+    Pop $0
     DetailPrint "WSL kernel version: $0"
     ${If} $1 != 0
         MessageBox MB_ICONSTOP|MB_OK "Could not check WSL version. Please ensure WSL is working."
@@ -459,6 +459,28 @@ Function InstallWSL2CommonSetup
         Abort
     ${EndIf}
     DetailPrint "Non-root user detected successfully."
+
+    ${If} $INSTALL_OPTION == "wsl2-docker-desktop"
+        ; Check if Docker is already working in WSL2
+        DetailPrint "Checking Docker Desktop connectivity..."
+        nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO docker ps'
+        Pop $1
+        Pop $0
+        ${If} $1 != 0
+            MessageBox MB_ICONSTOP|MB_OK "Docker is not working in WSL2. Please ensure Docker Desktop is running and integration with the $SELECTED_DISTRO distro is enabled."
+            Abort
+        ${EndIf}
+
+        ; Make sure we're not running docker-ce (check for dockerd process)
+        DetailPrint "Verifying Docker installation type..."
+        nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO pgrep dockerd'
+        Pop $1
+        Pop $0
+        ${If} $1 == 0
+            MessageBox MB_ICONSTOP|MB_OK "Docker CE (dockerd) is running in WSL2. This conflicts with Docker Desktop. Please remove Docker CE first ('sudo apt-get remove docker-ce')."
+            Abort
+        ${EndIf}
+    ${EndIf}
 
     ; Remove old Docker versions first
     DetailPrint "WSL($SELECTED_DISTRO): Removing old Docker packages if present..."
