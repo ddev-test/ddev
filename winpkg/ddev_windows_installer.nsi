@@ -155,6 +155,9 @@ Page custom InstallChoicePage InstallChoicePageLeave
 Page custom DistroSelectionPage DistroSelectionPageLeave
 
 ; Directory page
+!define MUI_DIRECTORYPAGE_TEXT_TOP "DDEV Windows-side components will be installed in this folder."
+!define MUI_DIRECTORYPAGE_TEXT_DESTINATION "Windows install folder:"
+!define MUI_DIRECTORYPAGE_HEADER_TEXT "Choose Windows install folder"
 !insertmacro MUI_PAGE_DIRECTORY
 
 ; Start menu page
@@ -243,11 +246,7 @@ SectionGroup /e "${PRODUCT_NAME}"
         ${If} $INSTALL_OPTION == "traditional"
             Call InstallTraditionalWindows
         ${Else}
-            ${If} $INSTALL_OPTION == "wsl2-docker-ce"
-                Call InstallWSL2DockerCE
-            ${Else}
-                Call InstallWSL2DockerDesktop
-            ${EndIf}
+            Call InstallWSL2Common
         ${EndIf}
 
         ; Create common shortcuts
@@ -540,52 +539,28 @@ Function InstallWSL2CommonSetup
     ${EndIf}
 FunctionEnd
 
-Function InstallWSL2DockerCE
-    DetailPrint "Starting InstallWSL2DockerCE for $SELECTED_DISTRO"
+Function InstallWSL2Common
+    DetailPrint "Starting WSL2 Docker installation for $SELECTED_DISTRO"
     Call InstallWSL2CommonSetup
 
-    ; Install packages for Docker CE
-    DetailPrint "WSL($SELECTED_DISTRO): Installing docker-ce and DDEV packages..."
-    StrCpy $0 "ddev docker-ce docker-ce-cli containerd.io wslu"
+    ${If} $INSTALL_OPTION == "wsl2-docker-desktop"
+        ; Install minimal packages needed for Docker Desktop
+        DetailPrint "WSL($SELECTED_DISTRO): Installing minimal Docker packages..."
+        StrCpy $0 "ddev docker-ce-cli wslu"
+    ${Else}
+        ; Install full Docker CE packages
+        DetailPrint "WSL($SELECTED_DISTRO): Installing Docker CE packages..."
+        StrCpy $0 "ddev docker-ce docker-ce-cli containerd.io wslu"
+    ${EndIf}
+
+    ; Install the selected packages
     nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y $0 2>&1"'
     Pop $1
     Pop $2
     ${If} $1 != 0
-        MessageBox MB_ICONSTOP|MB_OK "Failed to install needed Linux packages. Error: $2"
+        MessageBox MB_ICONSTOP|MB_OK "Failed to install packages. Error: $2"
         Abort
     ${EndIf}
-
-    ; TODO: This check is done elsewhere and doesn't need to be done here.
-    ; Detect default user in WSL2 (use wsl whoami)
-    DetailPrint "WSL($SELECTED_DISTRO): Detecting default user in WSL2..."
-    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO whoami'
-    Pop $1
-    Pop $0
-    DetailPrint "whoami output: $0"
-    ; Remove any trailing newline or carriage return
-    Push $0
-    Call TrimNewline
-    Pop $9
-    DetailPrint "WSL($SELECTED_DISTRO): Default user is: $9"
-
-    ; TODO: This check is done elsewhere and doesn't need to be done here.
-    ; Add user to docker group using root (no sudo)
-    DetailPrint "WSL($SELECTED_DISTRO): Adding user $9 to docker group using root..."
-    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root bash -c "usermod -aG docker $9"'
-    Pop $1
-    Pop $0
-    DetailPrint "usermod output: $0"
-
-    ; Install mkcert root CA in WSL
-    DetailPrint "WSL($SELECTED_DISTRO): mkcert -install inside WSL2..."
-    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root mkcert -install'
-    Pop $1
-    Pop $0
-
-    ; Remove old .docker config if present
-    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO rm -rf ~/.docker'
-    Pop $1
-    Pop $0
 
     ; Show DDEV version
     DetailPrint "Verifying DDEV installation..."
@@ -598,50 +573,7 @@ Function InstallWSL2DockerCE
     ${EndIf}
 
     DetailPrint "All done! Installation completed successfully."
-    MessageBox MB_ICONINFORMATION|MB_OK "DDEV WSL2 Docker CE installation completed successfully."
-FunctionEnd
-
-Function InstallWSL2DockerDesktop
-    DetailPrint "Starting InstallWSL2DockerDesktop"
-    Call InstallWSL2CommonSetup
-
-    ; Install packages for Docker Desktop (no docker-ce, only docker-ce-cli and wslu)
-    DetailPrint "WSL($SELECTED_DISTRO): Installing needed Debian packages..."
-    StrCpy $0 "ddev docker-ce-cli wslu"
-    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y $0 2>&1"'
-    Pop $1
-    Pop $2
-    ${If} $1 != 0
-        MessageBox MB_ICONSTOP|MB_OK "Failed to install packages. Error: $2"
-        Abort
-    ${EndIf}
-
-    ; TODO: This is done in common setup and doesn't need to be done here.
-    ; Install mkcert root CA in WSL
-    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root mkcert -install'
-    Pop $1
-    Pop $0
-
-    ; TODO: Done in common setup, no need to do it again.
-    ; TODO: Do we need to always install libsecret-1-0?
-    ; Remove old .docker config if present
-    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO rm -rf ~/.docker'
-    Pop $1
-    Pop $0
-
-    ; Show DDEV version
-    ; TODO: This is done in common setup and doesn't need to be done here.
-    DetailPrint "WSL($SELECTED_DISTRO): Verifying DDEV installation by running 'ddev version'..."
-    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO ddev version'
-    Pop $1
-    Pop $0
-    ${If} $1 != 0
-        MessageBox MB_ICONSTOP|MB_OK "DDEV verification failed. Please check the logs."
-        Abort
-    ${EndIf}
-
-    DetailPrint "All done! Installation completed successfully."
-    MessageBox MB_ICONINFORMATION|MB_OK "DDEV WSL2 Docker Desktop installation completed successfully."
+    MessageBox MB_ICONINFORMATION|MB_OK "DDEV WSL2 installation completed successfully."
 FunctionEnd
 
 Function InstallTraditionalWindows
