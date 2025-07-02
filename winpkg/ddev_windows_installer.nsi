@@ -471,13 +471,13 @@ Function InstallWSL2CommonSetup
             Abort
         ${EndIf}
 
-        ; Make sure we're not running docker-ce (check for dockerd process)
+        ; Make sure we're not running docker-ce or docker.io daemon
         DetailPrint "Verifying Docker installation type..."
         nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO pgrep dockerd'
         Pop $1
         Pop $0
         ${If} $1 == 0
-            MessageBox MB_ICONSTOP|MB_OK "Docker CE (dockerd) is running in WSL2. This conflicts with Docker Desktop. Please remove Docker CE first ('sudo apt-get remove docker-ce')."
+            MessageBox MB_ICONSTOP|MB_OK "A local Docker daemon (from docker-ce or docker.io) is running in WSL2. This conflicts with Docker Desktop. Please remove Docker first ('sudo apt-get remove docker-ce' or 'sudo apt-get remove docker.io')."
             Abort
         ${EndIf}
     ${EndIf}
