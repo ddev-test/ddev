@@ -155,7 +155,6 @@ Page custom InstallChoicePage InstallChoicePageLeave
 Page custom DistroSelectionPage DistroSelectionPageLeave
 
 ; Directory page
-!define MUI_PAGE_CUSTOMFUNCTION_PRE DirectoryPre
 !insertmacro MUI_PAGE_DIRECTORY
 
 ; Start menu page
@@ -169,6 +168,7 @@ Page custom DistroSelectionPage DistroSelectionPageLeave
 !insertmacro MUI_PAGE_INSTFILES
 
 ; Finish page
+; TODO: is this useful? How about just linking to 'releases'
 !define MUI_FINISHPAGE_SHOWREADME "https://github.com/ddev/ddev/releases/tag/${VERSION}"
 !define MUI_FINISHPAGE_SHOWREADME_NOTCHECKED
 !define MUI_FINISHPAGE_SHOWREADME_TEXT "Review the release notes"
@@ -187,7 +187,7 @@ Function InstallChoicePage
         Abort
     ${EndIf}
 
-    ${NSD_CreateLabel} 0 0 100% 36u "Choose your DDEV installation type:"
+    ${NSD_CreateLabel} 0 0 100% 36u "Choose DDEV installation type:"
     Pop $1
 
     ${NSD_CreateRadioButton} 10 40u 98% 24u "WSL2 with Docker CE (Recommended)$\nInstalls Docker CE inside WSL2 for best performance"
@@ -401,7 +401,7 @@ Function GetUbuntuDistros
     Push $R0
 FunctionEnd
 
-
+; TODO: there seem to be missing error checks here.
 Function InstallWSL2CommonSetup
     ; Check for WSL2
     DetailPrint "Checking WSL2 version..."
@@ -456,25 +456,25 @@ Function InstallWSL2CommonSetup
         Abort
     ${EndIf}
     ${If} $0 == "root"
-        MessageBox MB_ICONSTOP|MB_OK "Default user in your WSL2 distro is root. Please configure an ordinary default user."
+        MessageBox MB_ICONSTOP|MB_OK "The default user in your WSL2 distro is root. Please configure an ordinary default user."
         Abort
     ${EndIf}
     DetailPrint "Non-root user detected successfully."
 
     ; Remove old Docker versions first
-    DetailPrint "Removing old Docker versions if present..."
+    DetailPrint "WSL($SELECTED_DISTRO): Removing old Docker packages if present..."
     nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root bash -c "apt-get remove -y -qq docker docker-engine docker.io containerd runc >/dev/null 2>&1"'
     Pop $1
     Pop $0
 
     ; apt-get upgrade
-    DetailPrint "Doing apt-get upgrade..."
+    DetailPrint "WSL($SELECTED_DISTRO): Doing apt-get upgrade..."
     nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root bash -c "apt-get update && apt-get upgrade -y >/dev/null 2>&1"'
     Pop $1
     Pop $0
 
     ; Install linux packages
-    DetailPrint "Installing linux packages..."
+    DetailPrint "WSL($SELECTED_DISTRO): Installing linux packages..."
     nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root apt-get install -y ca-certificates curl gnupg gnupg2 libsecret-1-0 lsb-release pass'
     Pop $1
     Pop $0
@@ -484,13 +484,13 @@ Function InstallWSL2CommonSetup
     ${EndIf}
 
     ; Create keyrings directory if it doesn't exist
-    DetailPrint "Setting up keyrings directory..."
+    DetailPrint "WSL($SELECTED_DISTRO): Setting up keyrings directory..."
     nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root install -m 0755 -d /etc/apt/keyrings'
     Pop $1
     Pop $0
 
     ; Add Docker GPG key
-    DetailPrint "Adding Docker repository key..."
+    DetailPrint "WSL($SELECTED_DISTRO): Adding Docker repository key..."
     nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root bash -c "rm -f /etc/apt/keyrings/docker.gpg && mkdir -p /etc/apt/keyrings && curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg"'
     Pop $1
     Pop $0
@@ -500,7 +500,7 @@ Function InstallWSL2CommonSetup
     ${EndIf}
 
     ; Add Docker repository
-    DetailPrint "Adding Docker repository..."
+    DetailPrint "WSL($SELECTED_DISTRO): Adding Docker repository..."
     nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root -e bash -c "echo deb [arch=$$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $$(lsb_release -cs) stable | tee /etc/apt/sources.list.d/docker.list > /dev/null 2>&1"'
     Pop $1
     Pop $0
@@ -510,7 +510,7 @@ Function InstallWSL2CommonSetup
     ${EndIf}
 
     ; Add DDEV GPG key
-    DetailPrint "Adding DDEV repository key..."
+    DetailPrint "WSL($SELECTED_DISTRO): Adding DDEV repository key..."
     nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root bash -c "curl -fsSL https://pkg.ddev.com/apt/gpg.key | gpg --dearmor | tee /etc/apt/keyrings/ddev.gpg > /dev/null"'
     Pop $1
     Pop $0
@@ -520,7 +520,7 @@ Function InstallWSL2CommonSetup
     ${EndIf}
 
     ; Add DDEV repository
-    DetailPrint "Adding DDEV repository..."
+    DetailPrint "WSL($SELECTED_DISTRO): Adding DDEV repository..."
     nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root -e bash -c "echo \"deb [signed-by=/etc/apt/keyrings/ddev.gpg] https://pkg.ddev.com/apt/ * *\" > /etc/apt/sources.list.d/ddev.list"'
     Pop $1
     Pop $0
@@ -530,7 +530,7 @@ Function InstallWSL2CommonSetup
     ${EndIf}
 
     ; Update package lists
-    DetailPrint "Updating package lists..."
+    DetailPrint "WSL($SELECTED_DISTRO): apt-get update..."
     nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root bash -c "DEBIAN_FRONTEND=noninteractive apt-get update 2>&1"'
     Pop $1
     Pop $0
@@ -541,22 +541,23 @@ Function InstallWSL2CommonSetup
 FunctionEnd
 
 Function InstallWSL2DockerCE
-    DetailPrint "DEBUG: Starting InstallWSL2DockerCE"
+    DetailPrint "Starting InstallWSL2DockerCE for $SELECTED_DISTRO"
     Call InstallWSL2CommonSetup
 
     ; Install packages for Docker CE
-    DetailPrint "Installing packages..."
+    DetailPrint "WSL($SELECTED_DISTRO): Installing docker-ce and DDEV packages..."
     StrCpy $0 "ddev docker-ce docker-ce-cli containerd.io wslu"
     nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y $0 2>&1"'
     Pop $1
     Pop $2
     ${If} $1 != 0
-        MessageBox MB_ICONSTOP|MB_OK "Failed to install packages. Error: $2"
+        MessageBox MB_ICONSTOP|MB_OK "Failed to install needed Linux packages. Error: $2"
         Abort
     ${EndIf}
 
+    ; TODO: This check is done elsewhere and doesn't need to be done here.
     ; Detect default user in WSL2 (use wsl whoami)
-    DetailPrint "Detecting default user in WSL2..."
+    DetailPrint "WSL($SELECTED_DISTRO): Detecting default user in WSL2..."
     nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO whoami'
     Pop $1
     Pop $0
@@ -565,16 +566,18 @@ Function InstallWSL2DockerCE
     Push $0
     Call TrimNewline
     Pop $9
-    DetailPrint "Default user detected: $9"
+    DetailPrint "WSL($SELECTED_DISTRO): Default user is: $9"
 
+    ; TODO: This check is done elsewhere and doesn't need to be done here.
     ; Add user to docker group using root (no sudo)
-    DetailPrint "Adding user $9 to docker group with root..."
+    DetailPrint "WSL($SELECTED_DISTRO): Adding user $9 to docker group using root..."
     nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root bash -c "usermod -aG docker $9"'
     Pop $1
     Pop $0
     DetailPrint "usermod output: $0"
 
     ; Install mkcert root CA in WSL
+    DetailPrint "WSL($SELECTED_DISTRO): mkcert -install inside WSL2..."
     nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root mkcert -install'
     Pop $1
     Pop $0
@@ -590,7 +593,7 @@ Function InstallWSL2DockerCE
     Pop $1
     Pop $0
     ${If} $1 != 0
-        MessageBox MB_ICONSTOP|MB_OK "DDEV verification failed. Please check the logs."
+        MessageBox MB_ICONSTOP|MB_OK "WSL($SELECTED_DISTRO) doesn't seem to have working 'ddev version'. Please execute it manually in $SELECTED_DISTRO to debug the problem."
         Abort
     ${EndIf}
 
@@ -599,11 +602,11 @@ Function InstallWSL2DockerCE
 FunctionEnd
 
 Function InstallWSL2DockerDesktop
-    DetailPrint "DEBUG: Starting InstallWSL2DockerDesktop"
+    DetailPrint "Starting InstallWSL2DockerDesktop"
     Call InstallWSL2CommonSetup
 
     ; Install packages for Docker Desktop (no docker-ce, only docker-ce-cli and wslu)
-    DetailPrint "Installing packages..."
+    DetailPrint "WSL($SELECTED_DISTRO): Installing needed Debian packages..."
     StrCpy $0 "ddev docker-ce-cli wslu"
     nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y $0 2>&1"'
     Pop $1
@@ -613,18 +616,22 @@ Function InstallWSL2DockerDesktop
         Abort
     ${EndIf}
 
+    ; TODO: This is done in common setup and doesn't need to be done here.
     ; Install mkcert root CA in WSL
     nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root mkcert -install'
     Pop $1
     Pop $0
 
+    ; TODO: Done in common setup, no need to do it again.
+    ; TODO: Do we need to always install libsecret-1-0?
     ; Remove old .docker config if present
     nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO rm -rf ~/.docker'
     Pop $1
     Pop $0
 
     ; Show DDEV version
-    DetailPrint "Verifying DDEV installation..."
+    ; TODO: This is done in common setup and doesn't need to be done here.
+    DetailPrint "WSL($SELECTED_DISTRO): Verifying DDEV installation by running 'ddev version'..."
     nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO ddev version'
     Pop $1
     Pop $0
@@ -638,7 +645,7 @@ Function InstallWSL2DockerDesktop
 FunctionEnd
 
 Function InstallTraditionalWindows
-    DetailPrint "DEBUG: Starting InstallTraditionalWindows"
+    DetailPrint "Starting InstallTraditionalWindows"
 
     SetOutPath $INSTDIR
     SetOverwrite on
@@ -679,14 +686,6 @@ DoUninstall:
   ; Switch to 64 bit view and disable FS redirection
   SetRegView 64
   ${DisableX64FSRedirection}
-FunctionEnd
-
-Function DirectoryPre
-    ${If} $INSTALL_OPTION == "wsl2-docker-ce"
-    ${OrIf} $INSTALL_OPTION == "wsl2-docker-desktop"
-        ; Skip directory selection for WSL2 installs
-        Abort
-    ${EndIf}
 FunctionEnd
 
 Function ddevLicPre
