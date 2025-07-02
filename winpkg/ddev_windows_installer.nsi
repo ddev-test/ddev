@@ -495,7 +495,7 @@ Function InstallWSL2CommonSetup
     Pop $0
 
     ; Install linux packages
-    DetailPrint "WSL($SELECTED_DISTRO): Installing linux packages..."
+    DetailPrint "WSL($SELECTED_DISTRO): Installing required linux packages..."
     nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root apt-get install -y ca-certificates curl gnupg gnupg2 libsecret-1-0 lsb-release pass'
     Pop $1
     Pop $0
@@ -516,12 +516,12 @@ Function InstallWSL2CommonSetup
     Pop $1
     Pop $0
     ${If} $1 != 0
-        MessageBox MB_ICONSTOP|MB_OK "Failed to add Docker repository key. Please check your internet connection. Exit code: $1, Output: $0"
+        MessageBox MB_ICONSTOP|MB_OK "Failed to add Docker apt repository key. Please check your internet connection. Exit code: $1, Output: $0"
         Abort
     ${EndIf}
 
     ; Add Docker repository
-    DetailPrint "WSL($SELECTED_DISTRO): Adding Docker repository..."
+    DetailPrint "WSL($SELECTED_DISTRO): Adding Docker apt repository..."
     nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root -e bash -c "echo deb [arch=$$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $$(lsb_release -cs) stable | tee /etc/apt/sources.list.d/docker.list > /dev/null 2>&1"'
     Pop $1
     Pop $0
@@ -531,7 +531,7 @@ Function InstallWSL2CommonSetup
     ${EndIf}
 
     ; Add DDEV GPG key
-    DetailPrint "WSL($SELECTED_DISTRO): Adding DDEV repository key..."
+    DetailPrint "WSL($SELECTED_DISTRO): Adding DDEV apt repository key..."
     nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root bash -c "curl -fsSL https://pkg.ddev.com/apt/gpg.key | gpg --dearmor | tee /etc/apt/keyrings/ddev.gpg > /dev/null"'
     Pop $1
     Pop $0
@@ -541,7 +541,7 @@ Function InstallWSL2CommonSetup
     ${EndIf}
 
     ; Add DDEV repository
-    DetailPrint "WSL($SELECTED_DISTRO): Adding DDEV repository..."
+    DetailPrint "WSL($SELECTED_DISTRO): Adding DDEV apt repository..."
     nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root -e bash -c "echo \"deb [signed-by=/etc/apt/keyrings/ddev.gpg] https://pkg.ddev.com/apt/ * *\" > /etc/apt/sources.list.d/ddev.list"'
     Pop $1
     Pop $0
@@ -556,7 +556,7 @@ Function InstallWSL2CommonSetup
     Pop $1
     Pop $0
     ${If} $1 != 0
-        MessageBox MB_ICONSTOP|MB_OK "Failed to update package lists. Error: $0"
+        MessageBox MB_ICONSTOP|MB_OK "Failed to apt-get update. Error: $0"
         Abort
     ${EndIf}
 FunctionEnd
@@ -566,16 +566,15 @@ Function InstallWSL2Common
     Call InstallWSL2CommonSetup
 
     ${If} $INSTALL_OPTION == "wsl2-docker-desktop"
-        ; Install minimal packages needed for Docker Desktop
-        DetailPrint "WSL($SELECTED_DISTRO): Installing minimal Docker packages..."
+        ; Install packages needed for Docker Desktop
         StrCpy $0 "ddev docker-ce-cli wslu"
     ${Else}
         ; Install full Docker CE packages
-        DetailPrint "WSL($SELECTED_DISTRO): Installing Docker CE packages..."
         StrCpy $0 "ddev docker-ce docker-ce-cli containerd.io wslu"
     ${EndIf}
 
     ; Install the selected packages
+    DetailPrint "WSL($SELECTED_DISTRO): apt-get install $0."
     nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y $0 2>&1"'
     Pop $1
     Pop $2
@@ -585,7 +584,7 @@ Function InstallWSL2Common
     ${EndIf}
 
     ; Show DDEV version
-    DetailPrint "Verifying DDEV installation..."
+    DetailPrint "Verifying DDEV installation with 'ddev version'..."
     nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO ddev version'
     Pop $1
     Pop $0
