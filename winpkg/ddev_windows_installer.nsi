@@ -736,12 +736,16 @@ Function InstallTraditionalWindows
     !insertmacro MUI_STARTMENU_WRITE_END
 
     DetailPrint "Traditional Windows installation completed."
-    MessageBox MB_ICONINFORMATION|MB_OK "DDEV Traditional Windows installation completed successfully."
+    ${IfNot} ${Silent}
+        MessageBox MB_ICONINFORMATION|MB_OK "DDEV Traditional Windows installation completed successfully."
+    ${EndIf}
 FunctionEnd
 
 Function RunMkcertInstall
     DetailPrint "Setting up mkcert.exe (Windows) for trusted HTTPS certificates..."
-    MessageBox MB_ICONINFORMATION|MB_OK "Now setting up mkcer.exet to enable trusted https. Please accept the mkcert dialog box that may follow."
+    ${IfNot} ${Silent}
+        MessageBox MB_ICONINFORMATION|MB_OK "Now setting up mkcer.exet to enable trusted https. Please accept the mkcert dialog box that may follow."
+    ${EndIf}
     
     ; Unset CAROOT environment variable in current process
     System::Call 'kernel32::SetEnvironmentVariable(t "CAROOT", i 0)'
@@ -933,6 +937,12 @@ Function .onInit
     ${Else}
         MessageBox MB_ICONSTOP|MB_OK "This installer is for 64-bit Windows only."
         Abort
+    ${EndIf}
+    
+    ; For silent installs (like Chocolatey), default to traditional Windows installation
+    ${If} ${Silent}
+        StrCpy $INSTALL_OPTION "traditional"
+        DetailPrint "Silent install detected, defaulting to traditional Windows installation"
     ${EndIf}
 FunctionEnd
 
