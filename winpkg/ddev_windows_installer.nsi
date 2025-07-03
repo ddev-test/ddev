@@ -599,6 +599,12 @@ Function InstallWSL2Common
         Abort
     ${EndIf}
 
+    ; Set up mkcert in WSL2 if we're doing WSL2 installation
+    ${If} $INSTALL_OPTION == "wsl2-docker-ce"
+    ${OrIf} $INSTALL_OPTION == "wsl2-docker-desktop"
+        Call SetupMkcertInWSL2
+    ${EndIf}
+
     DetailPrint "All done! Installation completed successfully."
     MessageBox MB_ICONINFORMATION|MB_OK "DDEV WSL2 installation completed successfully."
 FunctionEnd
@@ -649,9 +655,88 @@ Function RunMkcertInstall
     ${If} $R0 = 0
         DetailPrint "mkcert -install completed successfully."
         WriteRegDWORD ${REG_UNINST_ROOT} "${REG_UNINST_KEY}" "NSIS:mkcertSetup" 1
+        
+        ; Set up CAROOT environment variable for WSL2 sharing
+        Call SetupMkcertForWSL2
     ${Else}
         DetailPrint "mkcert.exe -install failed with exit code: $R0"
         MessageBox MB_ICONEXCLAMATION|MB_OK "mkcert.exe -install failed. You may need to run 'mkcert.exe -install' manually later."
+    ${EndIf}
+FunctionEnd
+
+Function SetupMkcertForWSL2
+    DetailPrint "Setting up mkcert certificate sharing with WSL2..."
+    
+    ; Get the CAROOT directory from mkcert
+    nsExec::ExecToStack '"$INSTDIR\mkcert.exe" -CAROOT'
+    Pop $R0 ; error code
+    Pop $R1 ; output (CAROOT path)
+    
+    ${If} $R0 = 0
+        ; Trim whitespace from CAROOT path
+        Push $R1
+        Call TrimNewline
+        Pop $R1
+        
+        DetailPrint "CAROOT directory: $R1"
+        
+        ; Set CAROOT environment variable in system environment
+        WriteRegStr HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "CAROOT" "$R1"
+        
+        ; Get current WSLENV value
+        ReadRegStr $R2 HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "WSLENV"
+        ${If} ${Errors}
+            StrCpy $R2 ""
+        ${EndIf}
+        
+        ; Check if CAROOT/up is already in WSLENV
+        Push $R2
+        Push "CAROOT/up"
+        Call StrContains
+        Pop $R3
+        
+        ${If} $R3 == ""
+            ; Add CAROOT/up to WSLENV
+            ${If} $R2 != ""
+                StrCpy $R2 "CAROOT/up:$R2"
+            ${Else}
+                StrCpy $R2 "CAROOT/up"
+            ${EndIf}
+            WriteRegStr HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "WSLENV" "$R2"
+            DetailPrint "Added CAROOT/up to WSLENV: $R2"
+        ${Else}
+            DetailPrint "CAROOT/up already in WSLENV"
+        ${EndIf}
+        
+        DetailPrint "mkcert certificate sharing with WSL2 configured successfully."
+    ${Else}
+        DetailPrint "Failed to get CAROOT directory from mkcert"
+    ${EndIf}
+FunctionEnd
+
+Function SetupMkcertInWSL2
+    DetailPrint "Setting up mkcert inside WSL2 distro: $SELECTED_DISTRO"
+    
+    ; Verify CAROOT is accessible in WSL2
+    DetailPrint "Verifying CAROOT is accessible in WSL2..."
+    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO bash -c "echo CAROOT=$$CAROOT"'
+    Pop $R0
+    Pop $R1
+    DetailPrint "WSL2 CAROOT check: $R1"
+    
+    ; Run mkcert -install in WSL2
+    DetailPrint "Running mkcert -install in WSL2..."
+    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root mkcert -install'
+    Pop $R0
+    Pop $R1
+    
+    ${If} $R0 = 0
+        DetailPrint "mkcert -install completed successfully in WSL2."
+        DetailPrint "WSL2 mkcert output: $R1"
+    ${Else}
+        DetailPrint "mkcert -install failed in WSL2 with exit code: $R0"
+        DetailPrint "WSL2 mkcert error: $R1"
+        MessageBox MB_ICONEXCLAMATION|MB_OK "mkcert -install failed in WSL2. You may need to run 'mkcert -install' manually in WSL2 later."
     ${EndIf}
 FunctionEnd
 
