@@ -52,7 +52,7 @@ You’ll need a Docker provider on your system before you can [install DDEV](dde
 
     ### Rancher Desktop
 
-    Rancher Desktop is an easy-to-install free and open-source Docker provider. Install from [Rancher Desktop.io](https://rancherdesktop.io/). It has automated testing with DDEV. When installing, choose only the Docker option and turn off Kubernetes.
+    Rancher Desktop is an easy-to-install free and open-source Docker provider. Install from [Rancher Desktop](https://rancherdesktop.io/). It has automated testing with DDEV. When installing, choose only the Docker option and turn off Kubernetes.
 
 
     ### Colima
