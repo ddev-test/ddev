@@ -152,7 +152,7 @@ You’ll need a Docker provider on your system before you can [install DDEV](dde
 
     #### Rancher Desktop for Windows
 
-    1. Download and install Rancher Desktop from [rancherdesktop.io](https://rancherdesktop.io/).
+    1. Download and install [Rancher Desktop](https://rancherdesktop.io/).
     2. During installation, choose **Docker** as the container runtime and disable Kubernetes.
     3. After installation, open Rancher Desktop and go to **WSL Integration** in the settings.
     4. Enable integration with your Ubuntu-based WSL2 distro (e.g., Ubuntu, Ubuntu-20.04, Ubuntu-22.04).
