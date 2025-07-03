@@ -678,27 +678,26 @@ Function InstallTraditionalWindows
 FunctionEnd
 
 Function RunMkcertInstall
-    DetailPrint "Setting up mkcert for trusted HTTPS certificates..."
-    MessageBox MB_ICONINFORMATION|MB_OK "Now setting up mkcert to enable trusted https. Please accept the mkcert dialog box that may follow."
+    DetailPrint "Setting up mkcert.exe (Windows) for trusted HTTPS certificates..."
+    MessageBox MB_ICONINFORMATION|MB_OK "Now setting up mkcer.exet to enable trusted https. Please accept the mkcert dialog box that may follow."
     
     ; Unset CAROOT environment variable in current process
     System::Call 'kernel32::SetEnvironmentVariable(t "CAROOT", i 0)'
     Pop $0
-    DetailPrint "Unset CAROOT in current process environment"
-    
-    ; Run mkcert -install to create fresh certificate authority
-    DetailPrint "Running mkcert -install to create certificate authority..."
+
+    ; Run mkcert.exe -install to create fresh certificate authority
+    DetailPrint "Running mkcert.exe -install to create certificate authority..."
     nsExec::ExecToLog '"$INSTDIR\mkcert.exe" -install'
     Pop $R0
     ${If} $R0 = 0
-        DetailPrint "mkcert -install completed successfully"
+        DetailPrint "mkcert.exe -install completed successfully"
         WriteRegDWORD ${REG_UNINST_ROOT} "${REG_UNINST_KEY}" "NSIS:mkcertSetup" 1
         
         ; Set up CAROOT environment variable for WSL2 sharing
         Call SetupMkcertForWSL2
     ${Else}
-        DetailPrint "mkcert -install failed with exit code: $R0"
-        MessageBox MB_ICONEXCLAMATION|MB_OK "mkcert -install failed with exit code: $R0. You may need to run 'mkcert -install' manually later."
+        DetailPrint "mkcert.exe -install failed with exit code: $R0"
+        MessageBox MB_ICONEXCLAMATION|MB_OK "mkcert -install failed with exit code: $R0. You may need to run 'mkcert.exe -install' manually on Windows."
     ${EndIf}
 FunctionEnd
 
@@ -728,52 +727,41 @@ Function SetupMkcertForWSL2
         Pop $0  ; Get error code from AddValue
         DetailPrint "EnVar::AddValue CAROOT result: $0"
         
-        ; Set a dummy test environment variable for WSLENV debugging
-        EnVar::Delete "DDEV_TEST"
-        Pop $0
-        EnVar::AddValue "DDEV_TEST" "test_value_123"
-        Pop $0
-        DetailPrint "DDEV_TEST setup completed"
-        
         ; Get current WSLENV value from registry
         ReadRegStr $R2 HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "WSLENV"
         ${If} ${Errors}
             StrCpy $R2 ""
         ${EndIf}
-        
-        DetailPrint "Current WSLENV before modification: [$R2]"
-        
+
         ; Store original value for debugging
         StrCpy $R4 $R2
         
-        ; Always update WSLENV to include DDEV_TEST and CAROOT/up (simplify logic)
-        DetailPrint "Always updating WSLENV to include DDEV_TEST and CAROOT/up"
         ${If} $R2 != ""
-            StrCpy $R2 "DDEV_TEST:CAROOT/up:$R2"
+            StrCpy $R2 "CAROOT/up:$R2"
         ${Else}
-            StrCpy $R2 "DDEV_TEST:CAROOT/up"
+            StrCpy $R2 "CAROOT/up"
         ${EndIf}
         
         EnVar::SetHKLM
         EnVar::Delete "WSLENV"  ; Remove existing WSLENV entirely
         Pop $0  ; Get error code from Delete
-        DetailPrint "EnVar::Delete WSLENV result: $0"
+        ; DetailPrint "EnVar::Delete WSLENV result: $0"
         
         EnVar::AddValue "WSLENV" "$R2"
         Pop $0  ; Get error code from AddValue
-        DetailPrint "EnVar::AddValue WSLENV result: $0"
-        DetailPrint "Original WSLENV was: [$R4]"
-        DetailPrint "New WSLENV set to: [$R2]"
+        ; DetailPrint "EnVar::AddValue WSLENV result: $0"
+        ; DetailPrint "Original WSLENV was: [$R4]"
+        ; DetailPrint "New WSLENV set to: [$R2]"
         
         ; Verify by reading from registry
         ReadRegStr $R5 HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "WSLENV"
-        DetailPrint "WSLENV read back from registry: [$R5]"
+        ; DetailPrint "WSLENV read back from registry: [$R5]"
         
         DetailPrint "mkcert certificate sharing with WSL2 configured successfully."
         
         ; Read current value from registry for verification
-        ReadRegStr $R6 HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "WSLENV"
-        DetailPrint "WSLENV verification - Original: [$R4], Set to: [$R2], Actual: [$R6]"
+        ; ReadRegStr $R6 HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "WSLENV"
+        ; DetailPrint "WSLENV verification - Original: [$R4], Set to: [$R2], Actual: [$R6]"
     ${Else}
         DetailPrint "Failed to get CAROOT directory from mkcert"
         MessageBox MB_ICONEXCLAMATION|MB_OK "Failed to get CAROOT directory from mkcert. WSL2 certificate sharing may not work properly."
@@ -785,11 +773,11 @@ Function SetupMkcertInWSL2
     
     ; Check current Windows CAROOT environment variable from registry
     ReadRegStr $R2 HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "CAROOT"
-    DetailPrint "Windows CAROOT environment variable: $R2"
+    ; DetailPrint "Windows CAROOT environment variable: $R2"
     
     ; Check current Windows WSLENV environment variable from registry
     ReadRegStr $R3 HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "WSLENV"
-    DetailPrint "Windows WSLENV environment variable: $R3"
+    ; DetailPrint "Windows WSLENV environment variable: $R3"
     
     ; Verify CAROOT is accessible in WSL2
     DetailPrint "Verifying CAROOT is accessible in WSL2..."
