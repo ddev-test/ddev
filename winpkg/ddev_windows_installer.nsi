@@ -249,6 +249,9 @@ SectionGroup /e "${PRODUCT_NAME}"
             Call InstallWSL2Common
         ${EndIf}
 
+        ; Run mkcert.exe -install for all installation types
+        Call RunMkcertInstall
+
         ; Create common shortcuts
         !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
         CreateDirectory "$SMPROGRAMS\$StartMenuGroup"
@@ -293,6 +296,9 @@ Section -Post
 SectionEnd
 
 Section Uninstall
+    ; Uninstall mkcert if it was installed
+    Call un.mkcertUninstall
+
     ; Remove install directory from system PATH
     EnVar::SetHKLM
     EnVar::DeleteValue "Path" "$INSTDIR"
@@ -631,6 +637,24 @@ Function InstallTraditionalWindows
     MessageBox MB_ICONINFORMATION|MB_OK "DDEV Traditional Windows installation completed successfully."
 FunctionEnd
 
+Function RunMkcertInstall
+    DetailPrint "Running mkcert.exe -install to enable trusted HTTPS certificates on Windows-side browsers..."
+    MessageBox MB_ICONINFORMATION|MB_OK "Now running mkcert.exe to enable trusted https. Please accept the mkcert dialog box that may follow."
+    
+    ; Run mkcert.exe -install
+    nsExec::ExecToLog '"$INSTDIR\mkcert.exe" -install'
+    Pop $R0 ; get return value
+    
+    ; Check return value and provide feedback
+    ${If} $R0 = 0
+        DetailPrint "mkcert -install completed successfully."
+        WriteRegDWORD ${REG_UNINST_ROOT} "${REG_UNINST_KEY}" "NSIS:mkcertSetup" 1
+    ${Else}
+        DetailPrint "mkcert.exe -install failed with exit code: $R0"
+        MessageBox MB_ICONEXCLAMATION|MB_OK "mkcert.exe -install failed. You may need to run 'mkcert.exe -install' manually later."
+    ${EndIf}
+FunctionEnd
+
 Function un.onInit
   MessageBox MB_ICONQUESTION|MB_YESNO|MB_DEFBUTTON2 "Are you sure you want to completely remove $(^Name) and all of its components?" IDYES DoUninstall
   Abort
@@ -707,4 +731,29 @@ Function TrimNewline
         ${EndIf}
     Pop $R1
     Exch $R0
+FunctionEnd
+
+Function un.mkcertUninstall
+    ${If} ${FileExists} "$INSTDIR\mkcert.exe"
+        Push $0
+        
+        ; Read setup status from registry
+        ReadRegDWORD $0 ${REG_UNINST_ROOT} "${REG_UNINST_KEY}" "NSIS:mkcertSetup"
+        
+        ; Check if setup was done
+        ${If} $0 == 1
+            ; Get user confirmation
+            MessageBox MB_ICONQUESTION|MB_YESNO|MB_DEFBUTTON2 "mkcert was found in this installation. Do you like to remove the mkcert configuration?" /SD IDNO IDYES +2
+            Goto Skip
+            
+            MessageBox MB_ICONINFORMATION|MB_OK "Now running mkcert to disable trusted https. Please accept the mkcert dialog box that may follow."
+            
+            nsExec::ExecToLog '"$INSTDIR\mkcert.exe" -uninstall'
+            Pop $0 ; get return value
+            
+        Skip:
+        ${EndIf}
+        
+        Pop $0
+    ${EndIf}
 FunctionEnd
