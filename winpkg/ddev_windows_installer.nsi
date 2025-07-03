@@ -718,7 +718,19 @@ Function InstallWSL2Common
         Call SetupMkcertInWSL2
     ${EndIf}
 
-    DetailPrint "All done! Installation completed successfully."
+    ; Final validation - ensure DDEV is actually working
+    DetailPrint "Performing final validation of DDEV installation..."
+    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO ddev version'
+    Pop $1
+    Pop $0
+    ${If} $1 != 0
+        DetailPrint "ERROR: Final validation failed - DDEV is not working properly"
+        MessageBox MB_ICONSTOP|MB_OK "Installation validation failed. DDEV may not be working properly."
+        SetErrorLevel 1
+        Abort
+    ${EndIf}
+    
+    DetailPrint "All done! Installation completed successfully and validated."
     ${IfNot} ${Silent}
         MessageBox MB_ICONINFORMATION|MB_OK "DDEV WSL2 installation completed successfully."
     ${EndIf}
@@ -772,8 +784,9 @@ Function RunMkcertInstall
 
     ; Run mkcert.exe -install to create fresh certificate authority
     DetailPrint "Running mkcert.exe -install to create certificate authority..."
-    nsExec::ExecToLog '"$INSTDIR\mkcert.exe" -install'
+    nsExec::ExecToStack '"$INSTDIR\mkcert.exe" -install'
     Pop $R0
+    Pop $R1 ; Output
     ${If} $R0 = 0
         DetailPrint "mkcert.exe -install completed successfully"
         WriteRegDWORD ${REG_UNINST_ROOT} "${REG_UNINST_KEY}" "NSIS:mkcertSetup" 1
@@ -1125,8 +1138,9 @@ Function un.mkcertUninstall
             
             MessageBox MB_ICONINFORMATION|MB_OK "Now running mkcert to disable trusted https. Please accept the mkcert dialog box that may follow."
             
-            nsExec::ExecToLog '"$INSTDIR\mkcert.exe" -uninstall'
+            nsExec::ExecToStack '"$INSTDIR\mkcert.exe" -uninstall'
             Pop $0 ; get return value
+            Pop $1 ; get output
             
         Skip:
         ${EndIf}
@@ -1146,8 +1160,9 @@ Function un.CleanupMkcertEnvironment
         ; Run mkcert -uninstall first to properly clean up certificates
         ${If} ${FileExists} "$INSTDIR\mkcert.exe"
             DetailPrint "Running mkcert -uninstall to clean up certificates..."
-            nsExec::ExecToLog '"$INSTDIR\mkcert.exe" -uninstall'
+            nsExec::ExecToStack '"$INSTDIR\mkcert.exe" -uninstall'
             Pop $R1
+            Pop $R2 ; get output
             ${If} $R1 = 0
                 DetailPrint "mkcert -uninstall completed successfully"
             ${Else}
@@ -1201,4 +1216,15 @@ Function un.CleanupMkcertEnvironment
     ${EndIf}
     
     DetailPrint "mkcert environment variables cleanup completed"
+FunctionEnd
+
+; Installation completion callbacks for proper exit code handling
+Function .onInstSuccess
+    DetailPrint "Installation completed successfully"
+    SetErrorLevel 0
+FunctionEnd
+
+Function .onInstFailed
+    DetailPrint "Installation failed"
+    SetErrorLevel 1
 FunctionEnd
