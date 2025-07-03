@@ -299,6 +299,9 @@ Section Uninstall
     ; Uninstall mkcert if it was installed
     Call un.mkcertUninstall
 
+    ; Clean up mkcert environment variables
+    Call un.CleanupMkcertEnvironment
+
     ; Remove install directory from system PATH
     EnVar::SetHKLM
     EnVar::DeleteValue "Path" "$INSTDIR"
@@ -589,6 +592,34 @@ Function InstallWSL2Common
         Abort
     ${EndIf}
 
+    ; Add the unprivileged user to the docker group for docker-ce installation
+    ${If} $INSTALL_OPTION == "wsl2-docker-ce"
+        DetailPrint "WSL($SELECTED_DISTRO): Getting username of unprivileged user..."
+        nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO whoami'
+        Pop $1
+        Pop $2
+        ${If} $1 != 0
+            MessageBox MB_ICONSTOP|MB_OK "Failed to get WSL2 username. Error: $2"
+            Abort
+        ${EndIf}
+        
+        ; Trim whitespace from username
+        Push $2
+        Call TrimNewline
+        Pop $2
+        
+        DetailPrint "WSL($SELECTED_DISTRO): Adding user '$2' to docker group..."
+        nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root usermod -aG docker $2'
+        Pop $1
+        Pop $3
+        ${If} $1 != 0
+            DetailPrint "Warning: Failed to add user to docker group. Error: $3"
+            MessageBox MB_ICONEXCLAMATION|MB_OK "Warning: Failed to add user '$2' to docker group. You may need to run 'sudo usermod -aG docker $2' manually in WSL2."
+        ${Else}
+            DetailPrint "Successfully added user '$2' to docker group."
+        ${EndIf}
+    ${EndIf}
+
     ; Show DDEV version
     DetailPrint "Verifying DDEV installation with 'ddev version'..."
     nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO ddev version'
@@ -667,7 +698,7 @@ FunctionEnd
 Function SetupMkcertForWSL2
     DetailPrint "Setting up mkcert certificate sharing with WSL2..."
     
-    ; Get the CAROOT directory from mkcert
+    ; Get the CAROOT directory from mkcert (after mkcert -install has been run)
     nsExec::ExecToStack '"$INSTDIR\mkcert.exe" -CAROOT'
     Pop $R0 ; error code
     Pop $R1 ; output (CAROOT path)
@@ -841,4 +872,48 @@ Function un.mkcertUninstall
         
         Pop $0
     ${EndIf}
+FunctionEnd
+
+Function un.CleanupMkcertEnvironment
+    DetailPrint "Cleaning up mkcert environment variables..."
+    
+    ; Remove CAROOT environment variable
+    DeleteRegValue HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "CAROOT"
+    
+    ; Clean up WSLENV by removing CAROOT/up
+    ReadRegStr $R0 HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "WSLENV"
+    ${If} ${Errors}
+        DetailPrint "WSLENV not found, nothing to clean up"
+        Return
+    ${EndIf}
+    
+    DetailPrint "Current WSLENV: $R0"
+    
+    ; Remove CAROOT/up: from the beginning
+    ${WordFind} "$R0" "CAROOT/up:" "E+1{" $R1
+    ${If} $R1 != $R0
+        StrCpy $R0 $R1
+    ${Else}
+        ; Remove :CAROOT/up from anywhere else
+        ${WordFind} "$R0" ":CAROOT/up" "E+1{" $R1
+        ${If} $R1 != $R0
+            StrCpy $R0 $R1
+        ${Else}
+            ; Check if it's just CAROOT/up by itself
+            ${If} $R0 == "CAROOT/up"
+                StrCpy $R0 ""
+            ${EndIf}
+        ${EndIf}
+    ${EndIf}
+    
+    ; Update or delete WSLENV
+    ${If} $R0 == ""
+        DeleteRegValue HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "WSLENV"
+        DetailPrint "Removed empty WSLENV"
+    ${Else}
+        WriteRegStr HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "WSLENV" "$R0"
+        DetailPrint "Updated WSLENV to: $R0"
+    ${EndIf}
+    
+    DetailPrint "mkcert environment variables cleanup completed"
 FunctionEnd
