@@ -79,43 +79,60 @@ Function DistroSelectionPage
     ${NSD_CreateLabel} 0 0 100% 24u "Select your Ubuntu-based WSL2 distribution:"
     Pop $1
 
-    DetailPrint "Creating dropdown..."
-    ${NSD_CreateDropList} 10 30u 280u 82u ""
-    Pop $2
+    DetailPrint "Creating radio buttons..."
 
-    DetailPrint "Resetting dropdown content..."
-    SendMessage $2 ${CB_RESETCONTENT} 0 0
-
-    DetailPrint "Starting to populate dropdown with: [$R0]"
-
-    ; Process the pipe-separated list
+    ; Process the pipe-separated list and create radio buttons
     StrCpy $R1 $R0    ; Working copy of the list
     StrCpy $R2 0      ; Item count
+    StrCpy $R3 0      ; Y position counter
 
     ${Do}
         ; Find position of next pipe or end
-        StrCpy $R3 1   ; Length to extract
-        StrCpy $R4 0   ; Position
+        StrCpy $R4 1   ; Length to extract
+        StrCpy $R5 0   ; Position
         ${Do}
-            StrCpy $R5 $R1 1 $R4  ; Get character at position
-            ${If} $R5 == "|"
-            ${OrIf} $R5 == ""
+            StrCpy $R6 $R1 1 $R5  ; Get character at position
+            ${If} $R6 == "|"
+            ${OrIf} $R6 == ""
                 ${Break}
             ${EndIf}
-            IntOp $R4 $R4 + 1
+            IntOp $R5 $R5 + 1
         ${Loop}
 
         ; Extract the item
-        ${If} $R4 > 0
-            StrCpy $R6 $R1 $R4    ; Extract item
-            DetailPrint "Adding item: [$R6]"
-            SendMessage $2 ${CB_ADDSTRING} 0 "STR:$R6"
+        ${If} $R5 > 0
+            StrCpy $R7 $R1 $R5    ; Extract item
+            DetailPrint "Adding radio button: [$R7]"
+            
+            ; Calculate Y position for radio button
+            IntOp $R8 $R3 * 24
+            IntOp $R8 $R8 + 30
+            
+            ; Create radio button
+            ${NSD_CreateRadioButton} 10 $R8u 280u 16u "$R7"
+            Pop $R9
+            
+            ; Store radio button handle based on item count
+            ${If} $R2 == 0
+                StrCpy $2 $R9  ; Store first radio button handle
+                ${NSD_SetState} $R9 ${BST_CHECKED}  ; Select first item by default
+            ${ElseIf} $R2 == 1
+                StrCpy $3 $R9  ; Store second radio button handle
+            ${ElseIf} $R2 == 2
+                StrCpy $4 $R9  ; Store third radio button handle
+            ${ElseIf} $R2 == 3
+                StrCpy $5 $R9  ; Store fourth radio button handle
+            ${ElseIf} $R2 == 4
+                StrCpy $6 $R9  ; Store fifth radio button handle
+            ${EndIf}
+            
             IntOp $R2 $R2 + 1
+            IntOp $R3 $R3 + 1
         ${EndIf}
 
         ; Move past the separator
-        IntOp $R4 $R4 + 1
-        StrCpy $R1 $R1 "" $R4
+        IntOp $R5 $R5 + 1
+        StrCpy $R1 $R1 "" $R5
 
         ; Check if we're done
         ${If} $R1 == ""
@@ -123,12 +140,7 @@ Function DistroSelectionPage
         ${EndIf}
     ${Loop}
 
-    DetailPrint "Added $R2 items to dropdown"
-
-    ; Select first item if we added any
-    ${If} $R2 > 0
-        SendMessage $2 ${CB_SETCURSEL} 0 0
-    ${EndIf}
+    DetailPrint "Added $R2 radio buttons"
 
     DetailPrint "About to show dialog..."
     nsDialogs::Show
@@ -136,8 +148,46 @@ FunctionEnd
 
 Function DistroSelectionPageLeave
     DetailPrint "Getting selected distro..."
+    
+    ; Check which radio button is selected and get its text
+    ${NSD_GetState} $2 $R0
+    ${If} $R0 == ${BST_CHECKED}
+        ${NSD_GetText} $2 $SELECTED_DISTRO
+        DetailPrint "Selected distro: $SELECTED_DISTRO"
+        Return
+    ${EndIf}
+    
+    ${NSD_GetState} $3 $R0
+    ${If} $R0 == ${BST_CHECKED}
+        ${NSD_GetText} $3 $SELECTED_DISTRO
+        DetailPrint "Selected distro: $SELECTED_DISTRO"
+        Return
+    ${EndIf}
+    
+    ${NSD_GetState} $4 $R0
+    ${If} $R0 == ${BST_CHECKED}
+        ${NSD_GetText} $4 $SELECTED_DISTRO
+        DetailPrint "Selected distro: $SELECTED_DISTRO"
+        Return
+    ${EndIf}
+    
+    ${NSD_GetState} $5 $R0
+    ${If} $R0 == ${BST_CHECKED}
+        ${NSD_GetText} $5 $SELECTED_DISTRO
+        DetailPrint "Selected distro: $SELECTED_DISTRO"
+        Return
+    ${EndIf}
+    
+    ${NSD_GetState} $6 $R0
+    ${If} $R0 == ${BST_CHECKED}
+        ${NSD_GetText} $6 $SELECTED_DISTRO
+        DetailPrint "Selected distro: $SELECTED_DISTRO"
+        Return
+    ${EndIf}
+    
+    ; Fallback - should not happen if we have proper radio button logic
+    DetailPrint "No distro selected - using first available"
     ${NSD_GetText} $2 $SELECTED_DISTRO
-    DetailPrint "Selected distro: $SELECTED_DISTRO"
 FunctionEnd
 
 ; Define pages
