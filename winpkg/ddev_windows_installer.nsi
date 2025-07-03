@@ -719,7 +719,9 @@ Function InstallWSL2Common
     ${EndIf}
 
     DetailPrint "All done! Installation completed successfully."
-    MessageBox MB_ICONINFORMATION|MB_OK "DDEV WSL2 installation completed successfully."
+    ${IfNot} ${Silent}
+        MessageBox MB_ICONINFORMATION|MB_OK "DDEV WSL2 installation completed successfully."
+    ${EndIf}
 FunctionEnd
 
 Function InstallTraditionalWindows
@@ -951,6 +953,42 @@ Function ParseCommandLine
     ; Get command line
     ${GetParameters} $R0
     DetailPrint "Command line parameters: $R0"
+    
+    ; Check for /help argument
+    ${GetOptions} $R0 "/help" $R1
+    ${IfNot} ${Errors}
+        MessageBox MB_ICONINFORMATION|MB_OK "DDEV Windows Installer Usage:$\n$\n\
+            /docker-ce /distro=<name>     - WSL2 with Docker CE (Recommended)$\n\
+            /docker-desktop /distro=<name> - WSL2 with Docker Desktop$\n\
+            /rancher-desktop /distro=<name> - WSL2 with Rancher Desktop$\n\
+            /traditional                  - Traditional Windows install$\n\
+            /S                           - Silent install$\n\
+            /help or /?                  - Show this help message$\n$\n\
+            Examples:$\n\
+            installer.exe /docker-ce /distro=Ubuntu-22.04$\n\
+            installer.exe /docker-desktop /distro=Ubuntu-20.04$\n\
+            installer.exe /traditional$\n\
+            installer.exe /traditional /S"
+        Abort
+    ${EndIf}
+    
+    ; Check for /? argument  
+    ${GetOptions} $R0 "/?" $R1
+    ${IfNot} ${Errors}
+        MessageBox MB_ICONINFORMATION|MB_OK "DDEV Windows Installer Usage:$\n$\n\
+            /docker-ce /distro=<name>     - WSL2 with Docker CE (Recommended)$\n\
+            /docker-desktop /distro=<name> - WSL2 with Docker Desktop$\n\
+            /rancher-desktop /distro=<name> - WSL2 with Rancher Desktop$\n\
+            /traditional                  - Traditional Windows install$\n\
+            /S                           - Silent install$\n\
+            /help or /?                  - Show this help message$\n$\n\
+            Examples:$\n\
+            installer.exe /docker-ce /distro=Ubuntu-22.04$\n\
+            installer.exe /docker-desktop /distro=Ubuntu-20.04$\n\
+            installer.exe /traditional$\n\
+            installer.exe /traditional /S"
+        Abort
+    ${EndIf}
     
     ; Check for /docker-ce argument
     ${GetOptions} $R0 "/docker-ce" $R1
