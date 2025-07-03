@@ -6,6 +6,9 @@
 !include "x64.nsh"
 !include "WordFunc.nsh"
 
+!insertmacro GetParameters
+!insertmacro GetOptions
+
 !insertmacro WordFind
 ; Remove the Trim macro since we're using our own TrimWhitespace function
 
@@ -27,6 +30,8 @@ RequestExecutionLevel admin
 ; Variables
 Var /GLOBAL INSTALL_OPTION
 Var /GLOBAL SELECTED_DISTRO
+Var /GLOBAL SILENT_INSTALL_TYPE
+Var /GLOBAL SILENT_DISTRO
 Var StartMenuGroup
 
 !define REG_INSTDIR_ROOT "HKLM"
@@ -54,6 +59,13 @@ Function DistroSelectionPage
     ${If} $INSTALL_OPTION != "wsl2-docker-ce"
     ${AndIf} $INSTALL_OPTION != "wsl2-docker-desktop"
         DetailPrint "Skipping distro selection for non-WSL2 install"
+        Abort
+    ${EndIf}
+
+    ; Skip this page if distro was specified via command line
+    ${If} $SILENT_DISTRO != ""
+        DetailPrint "Skipping distro selection - using command line distro: $SILENT_DISTRO"
+        StrCpy $SELECTED_DISTRO $SILENT_DISTRO
         Abort
     ${EndIf}
 
@@ -238,6 +250,11 @@ Page custom DistroSelectionPage DistroSelectionPageLeave
 ReserveFile /plugin EnVar.dll
 
 Function InstallChoicePage
+    ; Skip this page if install type was specified via command line
+    ${If} $SILENT_INSTALL_TYPE != ""
+        Abort
+    ${EndIf}
+
     nsDialogs::Create 1018
     Pop $0
     ${If} $0 == error
@@ -926,6 +943,61 @@ Function ddevLicLeave
     WriteRegDWORD ${REG_UNINST_ROOT} "${REG_UNINST_KEY}" "NSIS:ddevLicenseAccepted" 0x00000001
 FunctionEnd
 
+Function ParseCommandLine
+    ; Initialize variables
+    StrCpy $SILENT_INSTALL_TYPE ""
+    StrCpy $SILENT_DISTRO ""
+    
+    ; Get command line
+    ${GetParameters} $R0
+    DetailPrint "Command line parameters: $R0"
+    
+    ; Check for /docker-ce argument
+    ${GetOptions} $R0 "/docker-ce" $R1
+    ${IfNot} ${Errors}
+        StrCpy $SILENT_INSTALL_TYPE "wsl2-docker-ce"
+        DetailPrint "Found /docker-ce argument"
+    ${EndIf}
+    
+    ; Check for /docker-desktop argument
+    ${GetOptions} $R0 "/docker-desktop" $R1
+    ${IfNot} ${Errors}
+        StrCpy $SILENT_INSTALL_TYPE "wsl2-docker-desktop"
+        DetailPrint "Found /docker-desktop argument"
+    ${EndIf}
+    
+    ; Check for /rancher-desktop argument
+    ${GetOptions} $R0 "/rancher-desktop" $R1
+    ${IfNot} ${Errors}
+        StrCpy $SILENT_INSTALL_TYPE "wsl2-docker-desktop"
+        DetailPrint "Found /rancher-desktop argument"
+    ${EndIf}
+    
+    ; Check for /traditional argument
+    ${GetOptions} $R0 "/traditional" $R1
+    ${IfNot} ${Errors}
+        StrCpy $SILENT_INSTALL_TYPE "traditional"
+        DetailPrint "Found /traditional argument"
+    ${EndIf}
+    
+    ; Check for /distro argument
+    ${GetOptions} $R0 "/distro=" $R1
+    ${IfNot} ${Errors}
+        StrCpy $SILENT_DISTRO $R1
+        DetailPrint "Found /distro argument: $SILENT_DISTRO"
+    ${EndIf}
+    
+    ; Validate that distro is specified for WSL2 installation types
+    ${If} $SILENT_INSTALL_TYPE == "wsl2-docker-ce"
+    ${OrIf} $SILENT_INSTALL_TYPE == "wsl2-docker-desktop"
+        ${If} $SILENT_DISTRO == ""
+            DetailPrint "ERROR: /distro argument required for WSL2 installation types"
+            MessageBox MB_ICONSTOP|MB_OK "The /distro=<distro_name> argument is required when using /docker-ce, /docker-desktop, or /rancher-desktop.$\n$\nExample: installer.exe /docker-ce /distro=Ubuntu-22.04"
+            Abort
+        ${EndIf}
+    ${EndIf}
+FunctionEnd
+
 Function .onInit
     ; Set proper 64-bit handling
     SetRegView 64
@@ -939,8 +1011,19 @@ Function .onInit
         Abort
     ${EndIf}
     
-    ; For silent installs (like Chocolatey), default to traditional Windows installation
-    ${If} ${Silent}
+    ; Parse command line arguments
+    Call ParseCommandLine
+    
+    ; Handle installation type selection
+    ${If} $SILENT_INSTALL_TYPE != ""
+        ; Command line argument specified - use it
+        StrCpy $INSTALL_OPTION $SILENT_INSTALL_TYPE
+        ${If} $SILENT_DISTRO != ""
+            StrCpy $SELECTED_DISTRO $SILENT_DISTRO
+        ${EndIf}
+        DetailPrint "Command line install with type: $INSTALL_OPTION"
+    ${ElseIf} ${Silent}
+        ; Legacy silent install (Chocolatey) - default to traditional
         StrCpy $INSTALL_OPTION "traditional"
         DetailPrint "Silent install detected, defaulting to traditional Windows installation"
     ${EndIf}
