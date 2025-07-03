@@ -165,6 +165,7 @@ Page custom DistroSelectionPage DistroSelectionPageLeave
 !define MUI_STARTMENUPAGE_REGISTRY_ROOT ${REG_UNINST_ROOT}
 !define MUI_STARTMENUPAGE_REGISTRY_KEY "${REG_UNINST_KEY}"
 !define MUI_STARTMENUPAGE_REGISTRY_VALUENAME "StartMenuGroup"
+!define MUI_PAGE_CUSTOMFUNCTION_PRE StartMenuPagePre
 !insertmacro MUI_PAGE_STARTMENU Application $StartMenuGroup
 
 ; Installation page
@@ -223,6 +224,13 @@ Function InstallChoicePageLeave
     StrCpy $INSTALL_OPTION "traditional"
 FunctionEnd
 
+Function StartMenuPagePre
+    ${If} $INSTALL_OPTION == "wsl2-docker-ce"
+    ${OrIf} $INSTALL_OPTION == "wsl2-docker-desktop"
+        Abort ; Skip the start menu page for WSL2 installations
+    ${EndIf}
+FunctionEnd
+
 Section "-Initialize"
     ; Create the installation directory
     CreateDirectory "$INSTDIR"
@@ -255,11 +263,13 @@ SectionGroup /e "${PRODUCT_NAME}"
             Call InstallWSL2Common
         ${EndIf}
 
-        ; Create common shortcuts
-        !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
-        CreateDirectory "$SMPROGRAMS\$StartMenuGroup"
-        CreateShortCut "$SMPROGRAMS\$StartMenuGroup\DDEV.lnk" "$INSTDIR\ddev.exe" "" "$INSTDIR\Icons\ddev.ico"
-        !insertmacro MUI_STARTMENU_WRITE_END
+        ; Create shortcuts only for traditional install
+        ${If} $INSTALL_OPTION == "traditional"
+            !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
+            CreateDirectory "$SMPROGRAMS\$StartMenuGroup"
+            CreateShortCut "$SMPROGRAMS\$StartMenuGroup\DDEV.lnk" "$INSTDIR\ddev.exe" "" "$INSTDIR\Icons\ddev.ico"
+            !insertmacro MUI_STARTMENU_WRITE_END
+        ${EndIf}
     SectionEnd
 
     Section "Add to PATH" SecAddToPath
@@ -323,14 +333,16 @@ Section Uninstall
     RMDir /r "$INSTDIR\Icons"
     RMDir /r "$INSTDIR\Links"
 
-    ; Remove all installed shortcuts
+    ; Remove all installed shortcuts if they exist
     !insertmacro MUI_STARTMENU_GETFOLDER "Application" $StartMenuGroup
-    Delete "$SMPROGRAMS\$StartMenuGroup\DDEV.lnk"
-    Delete "$SMPROGRAMS\$StartMenuGroup\DDEV Website.lnk"
-    Delete "$SMPROGRAMS\$StartMenuGroup\DDEV Documentation.lnk"
-    Delete "$SMPROGRAMS\$StartMenuGroup\Uninstall ${PRODUCT_NAME}.lnk"
-    RMDir /r "$SMPROGRAMS\$StartMenuGroup\mkcert"
-    RMDir "$SMPROGRAMS\$StartMenuGroup"
+    ${If} "$StartMenuGroup" != ""
+        Delete "$SMPROGRAMS\$StartMenuGroup\DDEV.lnk"
+        Delete "$SMPROGRAMS\$StartMenuGroup\DDEV Website.lnk"
+        Delete "$SMPROGRAMS\$StartMenuGroup\DDEV Documentation.lnk"
+        Delete "$SMPROGRAMS\$StartMenuGroup\Uninstall ${PRODUCT_NAME}.lnk"
+        RMDir /r "$SMPROGRAMS\$StartMenuGroup\mkcert"
+        RMDir "$SMPROGRAMS\$StartMenuGroup"
+    ${EndIf}
 
     ; Remove registry keys
     DeleteRegKey ${REG_UNINST_ROOT} "${REG_UNINST_KEY}"
