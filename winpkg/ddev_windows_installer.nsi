@@ -324,6 +324,18 @@ SectionGroup /e "${PRODUCT_NAME}"
         ; Run mkcert.exe -install early for all installation types (needed for WSL2 setup)
         Call RunMkcertInstall
 
+        ; Add DDEV installation directory to PATH (EnVar::AddValue handles duplicates)
+        DetailPrint "Adding DDEV installation directory to system PATH..."
+        ReadRegStr $R0 HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "Path"
+        DetailPrint "PATH before addition: $R0"
+        
+        EnVar::SetHKLM
+        EnVar::AddValue "Path" "$INSTDIR"
+        Pop $R1
+        DetailPrint "EnVar::AddValue result: $R1"
+        
+        DetailPrint "PATH addition completed with result: $R1"
+
         ${If} $INSTALL_OPTION == "traditional"
             Call InstallTraditionalWindows
         ${Else}
@@ -339,19 +351,6 @@ SectionGroup /e "${PRODUCT_NAME}"
         ${EndIf}
     SectionEnd
 
-    Section "Add to PATH" SecAddToPath
-        SectionIn 1 2 3
-        ; Only add to PATH if not already present
-        ReadRegStr $R0 HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "Path"
-        Push $R0
-        Push "$INSTDIR"
-        Call StrContains
-        Pop $R1
-        ${If} $R1 == ""
-            EnVar::SetHKLM
-            EnVar::AddValue "Path" "$INSTDIR"
-        ${EndIf}
-    SectionEnd
 SectionGroupEnd
 
 Section -Post
