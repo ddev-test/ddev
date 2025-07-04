@@ -316,6 +316,14 @@ SectionGroup /e "${PRODUCT_NAME}"
         File "..\.gotmp\bin\windows_${TARGET_ARCH}\mkcert_license.txt"
         File /oname=license.txt "..\LICENSE"
 
+        ; Install Linux DDEV binaries to temp directory for WSL2 installations
+        ${If} $INSTALL_OPTION == "wsl2-docker-ce"
+        ${OrIf} $INSTALL_OPTION == "wsl2-docker-desktop"
+            SetOutPath "C:\Windows\Temp\ddev_installer"
+            File /oname=ddev_linux "..\.gotmp\bin\linux_${TARGET_ARCH}\ddev"
+            File /oname=ddev-hostname_linux "..\.gotmp\bin\linux_${TARGET_ARCH}\ddev-hostname"
+        ${EndIf}
+
         ; Install icons
         SetOutPath "$INSTDIR\Icons"
         SetOverwrite try
@@ -656,11 +664,11 @@ Function InstallWSL2Common
     Call InstallWSL2CommonSetup
 
     ${If} $INSTALL_OPTION == "wsl2-docker-desktop"
-        ; Install packages needed for Docker Desktop
-        StrCpy $0 "ddev docker-ce-cli wslu"
+        ; Install packages needed for Docker Desktop (excluding ddev - we'll install manually)
+        StrCpy $0 "docker-ce-cli wslu mkcert"
     ${Else}
-        ; Install full Docker CE packages
-        StrCpy $0 "ddev docker-ce docker-ce-cli containerd.io wslu"
+        ; Install full Docker CE packages (excluding ddev - we'll install manually)
+        StrCpy $0 "docker-ce docker-ce-cli containerd.io wslu mkcert"
     ${EndIf}
 
     ; Install the selected packages
@@ -672,6 +680,43 @@ Function InstallWSL2Common
         MessageBox MB_ICONSTOP|MB_OK "Failed to install packages. Error: $2"
         Abort
     ${EndIf}
+
+    ; Install the bundled DDEV binary that matches the installer version
+    DetailPrint "WSL($SELECTED_DISTRO): Installing bundled DDEV binary..."
+    ; Use a simpler approach - just use the WSL path directly
+    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root cp "/mnt/c/Windows/Temp/ddev_installer/ddev_linux" /usr/bin/ddev'
+    Pop $1
+    Pop $2
+    ${If} $1 != 0
+        MessageBox MB_ICONSTOP|MB_OK "Failed to install DDEV binary. Error: $2"
+        Abort
+    ${EndIf}
+    
+    ; Make it executable
+    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root chmod +x /usr/bin/ddev'
+    Pop $1
+    Pop $2
+    
+    ; Install the bundled ddev-hostname binary
+    DetailPrint "WSL($SELECTED_DISTRO): Installing bundled ddev-hostname binary..."
+    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root cp "/mnt/c/Windows/Temp/ddev_installer/ddev-hostname_linux" /usr/bin/ddev-hostname'
+    Pop $1
+    Pop $2
+    ${If} $1 != 0
+        MessageBox MB_ICONSTOP|MB_OK "Failed to install ddev-hostname binary. Error: $2"
+        Abort
+    ${EndIf}
+    
+    ; Make ddev-hostname executable
+    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root chmod +x /usr/bin/ddev-hostname'
+    Pop $1
+    Pop $2
+    
+    ; Hold the DDEV package to prevent immediate upgrade 
+    DetailPrint "WSL($SELECTED_DISTRO): Setting up package hold for DDEV..."
+    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root bash -c "apt-mark hold ddev 2>/dev/null || true"'
+    Pop $1
+    Pop $2
 
     ; Add the unprivileged user to the docker group for docker-ce installation
     ${If} $INSTALL_OPTION == "wsl2-docker-ce"
@@ -728,6 +773,12 @@ Function InstallWSL2Common
         SetErrorLevel 1
         Abort
     ${EndIf}
+    
+    ; Clean up temp directory
+    DetailPrint "Cleaning up temporary files..."
+    Delete "C:\Windows\Temp\ddev_installer\ddev_linux"
+    Delete "C:\Windows\Temp\ddev_installer\ddev-hostname_linux"
+    RMDir "C:\Windows\Temp\ddev_installer"
     
     DetailPrint "All done! Installation completed successfully and validated."
     ${IfNot} ${Silent}
