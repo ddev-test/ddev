@@ -753,6 +753,10 @@ Function InstallTraditionalWindows
     ${EndIf}
     DetailPrint "Docker provider check successful."
 
+    ; Remove CAROOT environment variable for traditional Windows (WSL2-specific)
+    DetailPrint "Removing CAROOT environment variable (not needed for traditional Windows)"
+    DeleteRegValue HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "CAROOT"
+
     SetOutPath $INSTDIR
     SetOverwrite on
 
@@ -805,8 +809,11 @@ Function RunMkcertInstall
         DetailPrint "mkcert.exe -install completed successfully"
         WriteRegDWORD ${REG_UNINST_ROOT} "${REG_UNINST_KEY}" "NSIS:mkcertSetup" 1
         
-        ; Set up CAROOT environment variable for WSL2 sharing
-        Call SetupMkcertForWSL2
+        ; Set up CAROOT environment variable for WSL2 sharing (only for WSL2 installs)
+        ${If} $INSTALL_OPTION == "wsl2-docker-ce"
+        ${OrIf} $INSTALL_OPTION == "wsl2-docker-desktop"
+            Call SetupMkcertForWSL2
+        ${EndIf}
     ${Else}
         DetailPrint "mkcert.exe -install failed with exit code: $R0"
         MessageBox MB_ICONEXCLAMATION|MB_OK "mkcert -install failed with exit code: $R0. You may need to run 'mkcert.exe -install' manually on Windows."
