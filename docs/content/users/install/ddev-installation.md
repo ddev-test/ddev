@@ -192,9 +192,28 @@ Once you’ve [installed a Docker provider](docker-installation.md), you’re re
 
            - **Docker CE inside WSL2** (Recommended): The installer will automatically install Docker CE in your WSL2 environment. This is the fastest and most reliable option.
            - **Docker Desktop/Rancher Desktop**: Choose this if you already have Docker Desktop or Rancher Desktop installed or prefer to use them.
-           - **Traditional Windows**: Choose this for non-WSL2 installations (requires Docker Desktop or Rancher Desktop). Note that both Docker Desktop and Rancher Desktop themselves use WSL2, but you will interact with DDEV in Git Bash, PowerShell, or cmd.exe on the Windows side.
+           - **Traditional Windows**: Choose this for non-WSL2 installations (requires Docker Desktop or Rancher Desktop). Note that both Docker Desktop and Rancher Desktop themselves use WSL2, but you will interact with DDEV in Git Bash, PowerShell, or Cmd on the Windows side.
 
     The installer will automatically configure DDEV for your chosen Docker provider and WSL2 environment.
+
+    !!!tip "Windows Installer Silent Mode"
+        The Windows installer supports silent mode for automated installations and testing:
+
+        ```bash
+        # WSL2 with Docker CE and specified distro
+        ddev_windows_installer.exe /docker-ce /distro=Ubuntu-24.04 /S
+
+        # WSL2 with Docker Desktop and specified distro
+        ddev_windows_installer.exe /docker-desktop /distro=Ubuntu-22.04 /S
+
+        # Traditional Windows (requires Docker Desktop/Rancher Desktop)
+        ddev_windows_installer.exe /traditional /S
+
+        # Get help with all options
+        ddev_windows_installer.exe /help
+        ```
+
+        The `/S` flag makes the installation completely silent. Use `/distro=<name>` to specify your WSL2 distribution name (required for WSL2 options).
 
     ### Manual Installation
 
