@@ -267,10 +267,10 @@ Function InstallChoicePage
     ${NSD_CreateRadioButton} 10 40u 98% 24u "WSL2 with Docker CE (Recommended)$\nInstalls Docker CE inside WSL2 for best performance"
     Pop $2
 
-    ${NSD_CreateRadioButton} 10 70u 98% 24u "WSL2 with Docker Desktop or Rancher Desktop$\nUse Windows-installed Docker Desktop or Rancher Desktop with WSL2 backend"
+    ${NSD_CreateRadioButton} 10 70u 98% 24u "WSL2 with Docker Desktop or Rancher Desktop$\nRequires working Windows-installed Docker provider like Docker Desktop or Rancher Desktop with WSL2 backend"
     Pop $3
 
-    ${NSD_CreateRadioButton} 10 100u 98% 24u "Traditional Windows$\nClassic Windows installation without WSL2 (Requires Docker Desktop or Rancher Desktop)"
+    ${NSD_CreateRadioButton} 10 100u 98% 24u "Traditional Windows$\nClassic Windows installation using Git Bash, PowerShell, or Cmd (Requires a Windows Docker provider like Docker Desktop or Rancher Desktop)"
     Pop $4
 
     ${NSD_SetState} $2 ${BST_CHECKED}
@@ -738,6 +738,21 @@ FunctionEnd
 
 Function InstallTraditionalWindows
     DetailPrint "Starting InstallTraditionalWindows"
+
+    ; Check for Docker provider on Windows
+    DetailPrint "Checking for Docker provider on Windows..."
+    nsExec::ExecToStack 'docker ps'
+    Pop $1
+    Pop $0
+    ${If} $1 != 0
+        DetailPrint "Docker provider check failed. Exit code: $1"
+        ${IfNot} ${Silent}
+            MessageBox MB_ICONSTOP|MB_OK "Docker provider not found or not working on Windows.$\n$\nTraditional Windows installation requires a working Docker provider like Docker Desktop or Rancher Desktop.$\n$\nPlease install Docker Desktop (https://www.docker.com/products/docker-desktop/) or Rancher Desktop (https://rancherdesktop.io/) and make sure it's running before installing DDEV."
+        ${EndIf}
+        SetErrorLevel 1
+        Abort
+    ${EndIf}
+    DetailPrint "Docker provider check successful."
 
     SetOutPath $INSTDIR
     SetOverwrite on
