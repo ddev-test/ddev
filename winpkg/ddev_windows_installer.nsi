@@ -691,11 +691,11 @@ Function InstallWSL2Common
     Call InstallWSL2CommonSetup
 
     ${If} $INSTALL_OPTION == "wsl2-docker-desktop"
-        ; Install packages needed for Docker Desktop (excluding ddev - we'll install manually)
-        StrCpy $0 "docker-ce-cli wslu mkcert"
+        ; Install packages needed for Docker Desktop (including ddev)
+        StrCpy $0 "docker-ce-cli wslu ddev"
     ${Else}
-        ; Install full Docker CE packages (excluding ddev - we'll install manually)
-        StrCpy $0 "docker-ce docker-ce-cli containerd.io wslu mkcert"
+        ; Install full Docker CE packages (including ddev)
+        StrCpy $0 "docker-ce docker-ce-cli containerd.io wslu ddev"
     ${EndIf}
 
     ; Install the selected packages
@@ -709,15 +709,14 @@ Function InstallWSL2Common
         Call ShowErrorAndAbort
     ${EndIf}
 
-    ; Install the bundled DDEV binary that matches the installer version
-    DetailPrint "WSL($SELECTED_DISTRO): Installing bundled DDEV binary..."
-    ; Use a simpler approach - just use the WSL path directly
+    ; Overwrite the installed DDEV binary with the bundled version
+    DetailPrint "WSL($SELECTED_DISTRO): Overwriting DDEV binary with bundled version..."
     nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root cp "/mnt/c/Windows/Temp/ddev_installer/ddev_linux" /usr/bin/ddev'
     Pop $1
     Pop $2
     ${If} $1 != 0
-        DetailPrint "ERROR: DDEV binary installation failed - exit code: $1, output: $2"
-        Push "Failed to install DDEV binary. Error: $2"
+        DetailPrint "ERROR: DDEV binary overwrite failed - exit code: $1, output: $2"
+        Push "Failed to overwrite DDEV binary. Error: $2"
         Call ShowErrorAndAbort
     ${EndIf}
     
@@ -731,14 +730,14 @@ Function InstallWSL2Common
         Call ShowErrorAndAbort
     ${EndIf}
     
-    ; Install the bundled ddev-hostname binary
-    DetailPrint "WSL($SELECTED_DISTRO): Installing bundled ddev-hostname binary..."
+    ; Overwrite the installed ddev-hostname binary with the bundled version
+    DetailPrint "WSL($SELECTED_DISTRO): Overwriting ddev-hostname binary with bundled version..."
     nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root cp "/mnt/c/Windows/Temp/ddev_installer/ddev-hostname_linux" /usr/bin/ddev-hostname'
     Pop $1
     Pop $2
     ${If} $1 != 0
-        DetailPrint "ERROR: ddev-hostname binary installation failed - exit code: $1, output: $2"
-        Push "Failed to install ddev-hostname binary. Error: $2"
+        DetailPrint "ERROR: ddev-hostname binary overwrite failed - exit code: $1, output: $2"
+        Push "Failed to overwrite ddev-hostname binary. Error: $2"
         Call ShowErrorAndAbort
     ${EndIf}
     
@@ -752,12 +751,17 @@ Function InstallWSL2Common
         Call ShowErrorAndAbort
     ${EndIf}
     
-    ; Hold the DDEV package to prevent immediate upgrade 
-    DetailPrint "WSL($SELECTED_DISTRO): Setting up package hold for DDEV..."
-    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root bash -c "apt-mark hold ddev 2>/dev/null || true"'
+    ; Hold the DDEV package to prevent automatic upgrades
+    DetailPrint "WSL($SELECTED_DISTRO): Holding DDEV package to prevent upgrades..."
+    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root apt-mark hold ddev'
     Pop $1
     Pop $2
-    ; Note: This command is allowed to fail (|| true), so we don't check the error code
+    ${If} $1 != 0
+        DetailPrint "WARNING: Failed to hold DDEV package - exit code: $1, output: $2"
+        ; This is a warning, not fatal, so we don't abort
+    ${Else}
+        DetailPrint "Successfully held DDEV package to prevent automatic upgrades"
+    ${EndIf}
 
     ; Add the unprivileged user to the docker group for docker-ce installation
     ${If} $INSTALL_OPTION == "wsl2-docker-ce"
