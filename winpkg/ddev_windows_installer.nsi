@@ -844,7 +844,7 @@ FunctionEnd
 Function RunMkcertInstall
     DetailPrint "Setting up mkcert.exe (Windows) for trusted HTTPS certificates..."
     ${IfNot} ${Silent}
-        MessageBox MB_ICONINFORMATION|MB_OK "Now setting up mkcer.exet to enable trusted https. Please accept the mkcert dialog box that may follow."
+        MessageBox MB_ICONINFORMATION|MB_OK "Now setting up mkcert.exe to enable trusted https. Please accept the mkcert dialog box that may follow."
     ${EndIf}
     
     ; Unset CAROOT environment variable in current process
