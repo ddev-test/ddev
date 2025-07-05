@@ -533,18 +533,18 @@ Function InstallWSL2CommonSetup
     DetailPrint "WSL kernel version: $0"
     ${If} $1 != 0
         DetailPrint "ERROR: WSL version check failed - exit code: $1, output: $0"
-        MessageBox MB_ICONSTOP|MB_OK "Could not check WSL version. Please ensure WSL is working."
-        Abort
+        Push "Could not check WSL version. Please ensure WSL is working."
+        Call ShowErrorAndAbort
     ${EndIf}
     ${If} $0 == ""
         DetailPrint "ERROR: Empty WSL version output"
-        MessageBox MB_ICONSTOP|MB_OK "Could not detect WSL version. Please ensure WSL is working."
-        Abort
+        Push "Could not detect WSL version. Please ensure WSL is working."
+        Call ShowErrorAndAbort
     ${EndIf}
     ${If} $0 == "WSL"
         DetailPrint "ERROR: WSL1 detected instead of WSL2 - version output: $0"
-        MessageBox MB_ICONSTOP|MB_OK "Your default WSL distro is not WSL2. Please upgrade to WSL2."
-        Abort
+        Push "Your default WSL distro is not WSL2. Please upgrade to WSL2."
+        Call ShowErrorAndAbort
     ${EndIf}
     DetailPrint "WSL2 detected successfully."
 
@@ -556,13 +556,13 @@ Function InstallWSL2CommonSetup
     DetailPrint "Current user: $0"
     ${If} $1 != 0
         DetailPrint "ERROR: WSL user check failed - exit code: $1, output: $0"
-        MessageBox MB_ICONSTOP|MB_OK "Could not check WSL user. Please ensure WSL is working."
-        Abort
+        Push "Could not check WSL user. Please ensure WSL is working."
+        Call ShowErrorAndAbort
     ${EndIf}
     ${If} $0 == "root"
         DetailPrint "ERROR: Default WSL user is root - this is not supported"
-        MessageBox MB_ICONSTOP|MB_OK "The default user in your WSL2 distro is root. Please configure an ordinary default user."
-        Abort
+        Push "The default user in your WSL2 distro is root. Please configure an ordinary default user."
+        Call ShowErrorAndAbort
     ${EndIf}
     DetailPrint "Non-root user detected successfully."
 
@@ -648,8 +648,8 @@ Function InstallWSL2CommonSetup
     Pop $0
     ${If} $1 != 0
         DetailPrint "ERROR: Failed to add Docker repository - exit code: $1, output: $0"
-        MessageBox MB_ICONSTOP|MB_OK "Failed to add Docker repository. Exit code: $1, Output: $0"
-        Abort
+        Push "Failed to add Docker repository. Exit code: $1, Output: $0"
+        Call ShowErrorAndAbort
     ${EndIf}
 
     ; Add DDEV GPG key
@@ -659,8 +659,8 @@ Function InstallWSL2CommonSetup
     Pop $0
     ${If} $1 != 0
         DetailPrint "ERROR: Failed to add DDEV repository key - exit code: $1, output: $0"
-        MessageBox MB_ICONSTOP|MB_OK "Failed to add DDEV repository key. Error: $0"
-        Abort
+        Push "Failed to add DDEV repository key. Error: $0"
+        Call ShowErrorAndAbort
     ${EndIf}
 
     ; Add DDEV repository
@@ -670,8 +670,8 @@ Function InstallWSL2CommonSetup
     Pop $0
     ${If} $1 != 0
         DetailPrint "ERROR: Failed to add DDEV repository - exit code: $1, output: $0"
-        MessageBox MB_ICONSTOP|MB_OK "Failed to add DDEV repository. Exit code: $1, Output: $0"
-        Abort
+        Push "Failed to add DDEV repository. Exit code: $1, Output: $0"
+        Call ShowErrorAndAbort
     ${EndIf}
 
     ; Update package lists
@@ -681,8 +681,8 @@ Function InstallWSL2CommonSetup
     Pop $0
     ${If} $1 != 0
         DetailPrint "ERROR: apt-get update failed - exit code: $1, output: $0"
-        MessageBox MB_ICONSTOP|MB_OK "Failed to apt-get update. Error: $0"
-        Abort
+        Push "Failed to apt-get update. Error: $0"
+        Call ShowErrorAndAbort
     ${EndIf}
 FunctionEnd
 
