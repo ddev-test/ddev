@@ -585,12 +585,17 @@ Function InstallWSL2CommonSetup
     nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root bash -c "apt-get remove -y -qq docker docker-engine docker.io containerd runc >/dev/null 2>&1"'
     Pop $1
     Pop $0
+    ; Note: This command is allowed to fail if packages aren't installed
 
     ; apt-get upgrade
     DetailPrint "WSL($SELECTED_DISTRO): Doing apt-get upgrade..."
     nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root bash -c "apt-get update && apt-get upgrade -y >/dev/null 2>&1"'
     Pop $1
     Pop $0
+    ${If} $1 != 0
+        MessageBox MB_ICONSTOP|MB_OK "Failed to update/upgrade packages. Error: $0"
+        Abort
+    ${EndIf}
 
     ; Install linux packages
     DetailPrint "WSL($SELECTED_DISTRO): Installing required linux packages..."
@@ -598,7 +603,7 @@ Function InstallWSL2CommonSetup
     Pop $1
     Pop $0
     ${If} $1 != 0
-        MessageBox MB_ICONSTOP|MB_OK "Failed to install dependencies. Please check the logs."
+        MessageBox MB_ICONSTOP|MB_OK "Failed to install dependencies. Error: $0"
         Abort
     ${EndIf}
 
@@ -607,6 +612,10 @@ Function InstallWSL2CommonSetup
     nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root install -m 0755 -d /etc/apt/keyrings'
     Pop $1
     Pop $0
+    ${If} $1 != 0
+        MessageBox MB_ICONSTOP|MB_OK "Failed to create keyrings directory. Error: $0"
+        Abort
+    ${EndIf}
 
     ; Add Docker GPG key
     DetailPrint "WSL($SELECTED_DISTRO): Adding Docker repository key..."
@@ -644,7 +653,7 @@ Function InstallWSL2CommonSetup
     Pop $1
     Pop $0
     ${If} $1 != 0
-        MessageBox MB_ICONSTOP|MB_OK "Failed to add DDEV repository. Please check the logs."
+        MessageBox MB_ICONSTOP|MB_OK "Failed to add DDEV repository. Exit code: $1, Output: $0"
         Abort
     ${EndIf}
 
@@ -696,6 +705,10 @@ Function InstallWSL2Common
     nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root chmod +x /usr/bin/ddev'
     Pop $1
     Pop $2
+    ${If} $1 != 0
+        MessageBox MB_ICONSTOP|MB_OK "Failed to make DDEV binary executable. Error: $2"
+        Abort
+    ${EndIf}
     
     ; Install the bundled ddev-hostname binary
     DetailPrint "WSL($SELECTED_DISTRO): Installing bundled ddev-hostname binary..."
@@ -711,12 +724,17 @@ Function InstallWSL2Common
     nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root chmod +x /usr/bin/ddev-hostname'
     Pop $1
     Pop $2
+    ${If} $1 != 0
+        MessageBox MB_ICONSTOP|MB_OK "Failed to make ddev-hostname binary executable. Error: $2"
+        Abort
+    ${EndIf}
     
     ; Hold the DDEV package to prevent immediate upgrade 
     DetailPrint "WSL($SELECTED_DISTRO): Setting up package hold for DDEV..."
     nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root bash -c "apt-mark hold ddev 2>/dev/null || true"'
     Pop $1
     Pop $2
+    ; Note: This command is allowed to fail (|| true), so we don't check the error code
 
     ; Add the unprivileged user to the docker group for docker-ce installation
     ${If} $INSTALL_OPTION == "wsl2-docker-ce"
@@ -752,7 +770,7 @@ Function InstallWSL2Common
     Pop $1
     Pop $0
     ${If} $1 != 0
-        MessageBox MB_ICONSTOP|MB_OK "WSL($SELECTED_DISTRO) doesn't seem to have working 'ddev version'. Please execute it manually in $SELECTED_DISTRO to debug the problem."
+        MessageBox MB_ICONSTOP|MB_OK "WSL($SELECTED_DISTRO) doesn't seem to have working 'ddev version'. Please execute it manually in $SELECTED_DISTRO to debug the problem. Error: $0"
         Abort
     ${EndIf}
 
@@ -769,7 +787,7 @@ Function InstallWSL2Common
     Pop $0
     ${If} $1 != 0
         DetailPrint "ERROR: Final validation failed - DDEV is not working properly"
-        MessageBox MB_ICONSTOP|MB_OK "Installation validation failed. DDEV may not be working properly."
+        MessageBox MB_ICONSTOP|MB_OK "Installation validation failed. DDEV may not be working properly. Error: $0"
         SetErrorLevel 1
         Abort
     ${EndIf}
@@ -867,7 +885,7 @@ Function RunMkcertInstall
         ${EndIf}
     ${Else}
         DetailPrint "mkcert.exe -install failed with exit code: $R0"
-        MessageBox MB_ICONEXCLAMATION|MB_OK "mkcert -install failed with exit code: $R0. You may need to run 'mkcert.exe -install' manually on Windows."
+        MessageBox MB_ICONEXCLAMATION|MB_OK "mkcert -install failed with exit code: $R0. Output: $R1. You may need to run 'mkcert.exe -install' manually on Windows."
     ${EndIf}
 FunctionEnd
 
@@ -1004,7 +1022,7 @@ Function SetupMkcertInWSL2
     ${Else}
         DetailPrint "mkcert -install failed in WSL2 with exit code: $R0"
         DetailPrint "WSL2 mkcert error: $R1"
-        MessageBox MB_ICONEXCLAMATION|MB_OK "mkcert -install failed in WSL2. You may need to run 'mkcert -install' manually in WSL2 later."
+        MessageBox MB_ICONEXCLAMATION|MB_OK "mkcert -install failed in WSL2 with exit code: $R0. Error: $R1. You may need to run 'mkcert -install' manually in WSL2 later."
     ${EndIf}
 
 FunctionEnd
