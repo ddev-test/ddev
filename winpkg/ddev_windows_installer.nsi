@@ -1182,7 +1182,7 @@ Function TrimNewline
     StrCpy $R1 $R0 -1
     loop_trimnl:
         StrCpy $R1 $R0 -1
-        StrCpy $R2 $R1 1 -1
+        StrCpy $R2 $R0 1 -1
         ${If} $R2 == "$\n"
             StrCpy $R0 $R0 -1
             Goto loop_trimnl
