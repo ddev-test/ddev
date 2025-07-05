@@ -543,7 +543,7 @@ Function InstallWSL2CommonSetup
     ${EndIf}
     ${If} $0 == "WSL"
         DetailPrint "ERROR: WSL1 detected instead of WSL2 - version output: $0"
-        Push "Your default WSL distro is not WSL2. Please upgrade to WSL2."
+        Push "The selected distro ($SELECTED_DISTRO) is not WSL2. Please use a WSL2 distro."
         Call ShowErrorAndAbort
     ${EndIf}
     DetailPrint "WSL2 detected successfully."
