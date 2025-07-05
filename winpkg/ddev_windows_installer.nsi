@@ -84,8 +84,8 @@ Function DistroSelectionPage
     DetailPrint "Got distros: [$R0]"
     ${If} $R0 == ""
         DetailPrint "ERROR: No Ubuntu-based WSL2 distributions found"
-        MessageBox MB_ICONSTOP|MB_OK "No Ubuntu-based WSL2 distributions found. Please install Ubuntu for WSL2 first."
-        Abort
+        Push "No Ubuntu-based WSL2 distributions found. Please install Ubuntu for WSL2 first."
+        Call ShowErrorAndAbort
     ${EndIf}
 
     DetailPrint "Creating label..."
@@ -510,8 +510,8 @@ Function InstallWSL2CommonSetup
     DetailPrint "WSL version check exit code: $1"
     ${If} $1 != 0
         DetailPrint "ERROR: WSL2 not detected - exit code: $1, output: $0"
-        MessageBox MB_ICONSTOP|MB_OK "WSL2 does not seem to be installed. Please install WSL2 and Ubuntu before running this installer."
-        Abort
+        Push "WSL2 does not seem to be installed. Please install WSL2 and Ubuntu before running this installer."
+        Call ShowErrorAndAbort
     ${EndIf}
 
     ; Check for Ubuntu in selected distro
@@ -521,8 +521,8 @@ Function InstallWSL2CommonSetup
     Pop $0
     ${If} $1 != 0
         DetailPrint "ERROR: Cannot access distro $SELECTED_DISTRO - exit code: $1, output: $0"
-        MessageBox MB_ICONSTOP|MB_OK "Could not access the selected distro. Please ensure it's working properly."
-        Abort
+        Push "Could not access the selected distro. Please ensure it's working properly."
+        Call ShowErrorAndAbort
     ${EndIf}
 
     ; Check for WSL2 kernel
@@ -626,8 +626,8 @@ Function InstallWSL2CommonSetup
     Pop $0
     ${If} $1 != 0
         DetailPrint "ERROR: Failed to create keyrings directory - exit code: $1, output: $0"
-        MessageBox MB_ICONSTOP|MB_OK "Failed to create keyrings directory. Error: $0"
-        Abort
+        Push "Failed to create keyrings directory. Error: $0"
+        Call ShowErrorAndAbort
     ${EndIf}
 
     ; Add Docker GPG key
@@ -727,8 +727,8 @@ Function InstallWSL2Common
     Pop $2
     ${If} $1 != 0
         DetailPrint "ERROR: Failed to make DDEV binary executable - exit code: $1, output: $2"
-        MessageBox MB_ICONSTOP|MB_OK "Failed to make DDEV binary executable. Error: $2"
-        Abort
+        Push "Failed to make DDEV binary executable. Error: $2"
+        Call ShowErrorAndAbort
     ${EndIf}
     
     ; Install the bundled ddev-hostname binary
@@ -738,8 +738,8 @@ Function InstallWSL2Common
     Pop $2
     ${If} $1 != 0
         DetailPrint "ERROR: ddev-hostname binary installation failed - exit code: $1, output: $2"
-        MessageBox MB_ICONSTOP|MB_OK "Failed to install ddev-hostname binary. Error: $2"
-        Abort
+        Push "Failed to install ddev-hostname binary. Error: $2"
+        Call ShowErrorAndAbort
     ${EndIf}
     
     ; Make ddev-hostname executable
@@ -748,8 +748,8 @@ Function InstallWSL2Common
     Pop $2
     ${If} $1 != 0
         DetailPrint "ERROR: Failed to make ddev-hostname binary executable - exit code: $1, output: $2"
-        MessageBox MB_ICONSTOP|MB_OK "Failed to make ddev-hostname binary executable. Error: $2"
-        Abort
+        Push "Failed to make ddev-hostname binary executable. Error: $2"
+        Call ShowErrorAndAbort
     ${EndIf}
     
     ; Hold the DDEV package to prevent immediate upgrade 
@@ -812,9 +812,8 @@ Function InstallWSL2Common
     Pop $0
     ${If} $1 != 0
         DetailPrint "ERROR: Final DDEV validation failed - exit code: $1, output: $0"
-        MessageBox MB_ICONSTOP|MB_OK "Installation validation failed. DDEV may not be working properly. Error: $0"
-        SetErrorLevel 1
-        Abort
+        Push "Installation validation failed. DDEV may not be working properly. Error: $0"
+        Call ShowErrorAndAbort
     ${EndIf}
     
     ; Clean up temp directory
@@ -838,13 +837,9 @@ Function InstallTraditionalWindows
     Pop $1
     Pop $0
     ${If} $1 != 0
-        DetailPrint "Docker provider check failed. Exit code: $1"
         DetailPrint "ERROR: Docker provider check failed - exit code: $1, output: $0"
-        ${IfNot} ${Silent}
-            MessageBox MB_ICONSTOP|MB_OK "Docker provider not found or not working on Windows.$\n$\nTraditional Windows installation requires a working Docker provider like Docker Desktop or Rancher Desktop.$\n$\nPlease install Docker Desktop (https://www.docker.com/products/docker-desktop/) or Rancher Desktop (https://rancherdesktop.io/) and make sure it's running before installing DDEV."
-        ${EndIf}
-        SetErrorLevel 1
-        Abort
+        Push "Docker provider not found or not working on Windows.$\n$\nTraditional Windows installation requires a working Docker provider like Docker Desktop or Rancher Desktop.$\n$\nPlease install Docker Desktop (https://www.docker.com/products/docker-desktop/) or Rancher Desktop (https://rancherdesktop.io/) and make sure it's running before installing DDEV."
+        Call ShowErrorAndAbort
     ${EndIf}
     DetailPrint "Docker provider check successful."
 
