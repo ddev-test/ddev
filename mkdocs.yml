@@ -156,7 +156,6 @@ nav:
       - users/install/index.md
       - users/install/docker-installation.md
       - users/install/ddev-installation.md
-      - users/install/ddev-upgrade.md
       - 'Configuring Browsers': users/install/configuring-browsers.md
       - 'Upgrading': users/install/ddev-upgrade.md
     - 'Getting Started':
