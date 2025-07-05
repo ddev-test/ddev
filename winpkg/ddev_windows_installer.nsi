@@ -83,6 +83,7 @@ Function DistroSelectionPage
     Pop $R0
     DetailPrint "Got distros: [$R0]"
     ${If} $R0 == ""
+        DetailPrint "ERROR: No Ubuntu-based WSL2 distributions found"
         MessageBox MB_ICONSTOP|MB_OK "No Ubuntu-based WSL2 distributions found. Please install Ubuntu for WSL2 first."
         Abort
     ${EndIf}
@@ -508,6 +509,7 @@ Function InstallWSL2CommonSetup
     DetailPrint "WSL version check output: $0"
     DetailPrint "WSL version check exit code: $1"
     ${If} $1 != 0
+        DetailPrint "ERROR: WSL2 not detected - exit code: $1, output: $0"
         MessageBox MB_ICONSTOP|MB_OK "WSL2 does not seem to be installed. Please install WSL2 and Ubuntu before running this installer."
         Abort
     ${EndIf}
@@ -518,6 +520,7 @@ Function InstallWSL2CommonSetup
     Pop $1
     Pop $0
     ${If} $1 != 0
+        DetailPrint "ERROR: Cannot access distro $SELECTED_DISTRO - exit code: $1, output: $0"
         MessageBox MB_ICONSTOP|MB_OK "Could not access the selected distro. Please ensure it's working properly."
         Abort
     ${EndIf}
@@ -529,14 +532,17 @@ Function InstallWSL2CommonSetup
     Pop $0
     DetailPrint "WSL kernel version: $0"
     ${If} $1 != 0
+        DetailPrint "ERROR: WSL version check failed - exit code: $1, output: $0"
         MessageBox MB_ICONSTOP|MB_OK "Could not check WSL version. Please ensure WSL is working."
         Abort
     ${EndIf}
     ${If} $0 == ""
+        DetailPrint "ERROR: Empty WSL version output"
         MessageBox MB_ICONSTOP|MB_OK "Could not detect WSL version. Please ensure WSL is working."
         Abort
     ${EndIf}
     ${If} $0 == "WSL"
+        DetailPrint "ERROR: WSL1 detected instead of WSL2 - version output: $0"
         MessageBox MB_ICONSTOP|MB_OK "Your default WSL distro is not WSL2. Please upgrade to WSL2."
         Abort
     ${EndIf}
@@ -549,10 +555,12 @@ Function InstallWSL2CommonSetup
     Pop $0  ; output
     DetailPrint "Current user: $0"
     ${If} $1 != 0
+        DetailPrint "ERROR: WSL user check failed - exit code: $1, output: $0"
         MessageBox MB_ICONSTOP|MB_OK "Could not check WSL user. Please ensure WSL is working."
         Abort
     ${EndIf}
     ${If} $0 == "root"
+        DetailPrint "ERROR: Default WSL user is root - this is not supported"
         MessageBox MB_ICONSTOP|MB_OK "The default user in your WSL2 distro is root. Please configure an ordinary default user."
         Abort
     ${EndIf}
@@ -565,7 +573,8 @@ Function InstallWSL2CommonSetup
         Pop $1
         Pop $0
         ${If} $1 != 0
-            MessageBox MB_ICONSTOP|MB_OK "Docker is not working in WSL2. Please ensure Docker Desktop is running and integration with the $SELECTED_DISTRO distro is enabled."
+            DetailPrint "ERROR: Docker Desktop/Rancher Desktop not accessible in WSL2 - exit code: $1, output: $0"
+            MessageBox MB_ICONSTOP|MB_OK "Docker provider is not working in WSL2. Please ensure Docker Desktop, Rancher Desktop, or another provider is running and integration with the $SELECTED_DISTRO distro is enabled."
             Abort
         ${EndIf}
 
@@ -575,6 +584,7 @@ Function InstallWSL2CommonSetup
         Pop $1
         Pop $0
         ${If} $1 == 0
+            DetailPrint "ERROR: Local Docker daemon detected in WSL2 - conflicts with Docker Desktop. Process list: $0"
             MessageBox MB_ICONSTOP|MB_OK "A local Docker daemon (from docker-ce or docker.io) is running in WSL2. This conflicts with Docker Desktop. Please remove Docker first ('sudo apt-get remove docker-ce' or 'sudo apt-get remove docker.io')."
             Abort
         ${EndIf}
@@ -593,6 +603,7 @@ Function InstallWSL2CommonSetup
     Pop $1
     Pop $0
     ${If} $1 != 0
+        DetailPrint "ERROR: apt-get update/upgrade failed - exit code: $1, output: $0"
         MessageBox MB_ICONSTOP|MB_OK "Failed to update/upgrade packages. Error: $0"
         Abort
     ${EndIf}
@@ -603,6 +614,7 @@ Function InstallWSL2CommonSetup
     Pop $1
     Pop $0
     ${If} $1 != 0
+        DetailPrint "ERROR: Failed to install dependencies - exit code: $1, output: $0"
         MessageBox MB_ICONSTOP|MB_OK "Failed to install dependencies. Error: $0"
         Abort
     ${EndIf}
@@ -613,6 +625,7 @@ Function InstallWSL2CommonSetup
     Pop $1
     Pop $0
     ${If} $1 != 0
+        DetailPrint "ERROR: Failed to create keyrings directory - exit code: $1, output: $0"
         MessageBox MB_ICONSTOP|MB_OK "Failed to create keyrings directory. Error: $0"
         Abort
     ${EndIf}
@@ -623,6 +636,7 @@ Function InstallWSL2CommonSetup
     Pop $1
     Pop $0
     ${If} $1 != 0
+        DetailPrint "ERROR: Failed to add Docker repository key - exit code: $1, output: $0"
         MessageBox MB_ICONSTOP|MB_OK "Failed to add Docker apt repository key. Please check your internet connection. Exit code: $1, Output: $0"
         Abort
     ${EndIf}
@@ -633,6 +647,7 @@ Function InstallWSL2CommonSetup
     Pop $1
     Pop $0
     ${If} $1 != 0
+        DetailPrint "ERROR: Failed to add Docker repository - exit code: $1, output: $0"
         MessageBox MB_ICONSTOP|MB_OK "Failed to add Docker repository. Exit code: $1, Output: $0"
         Abort
     ${EndIf}
@@ -643,6 +658,7 @@ Function InstallWSL2CommonSetup
     Pop $1
     Pop $0
     ${If} $1 != 0
+        DetailPrint "ERROR: Failed to add DDEV repository key - exit code: $1, output: $0"
         MessageBox MB_ICONSTOP|MB_OK "Failed to add DDEV repository key. Error: $0"
         Abort
     ${EndIf}
@@ -653,6 +669,7 @@ Function InstallWSL2CommonSetup
     Pop $1
     Pop $0
     ${If} $1 != 0
+        DetailPrint "ERROR: Failed to add DDEV repository - exit code: $1, output: $0"
         MessageBox MB_ICONSTOP|MB_OK "Failed to add DDEV repository. Exit code: $1, Output: $0"
         Abort
     ${EndIf}
@@ -663,6 +680,7 @@ Function InstallWSL2CommonSetup
     Pop $1
     Pop $0
     ${If} $1 != 0
+        DetailPrint "ERROR: apt-get update failed - exit code: $1, output: $0"
         MessageBox MB_ICONSTOP|MB_OK "Failed to apt-get update. Error: $0"
         Abort
     ${EndIf}
@@ -686,6 +704,7 @@ Function InstallWSL2Common
     Pop $1
     Pop $2
     ${If} $1 != 0
+        DetailPrint "ERROR: Package installation failed - exit code: $1, output: $2"
         MessageBox MB_ICONSTOP|MB_OK "Failed to install packages. Error: $2"
         Abort
     ${EndIf}
@@ -697,6 +716,7 @@ Function InstallWSL2Common
     Pop $1
     Pop $2
     ${If} $1 != 0
+        DetailPrint "ERROR: DDEV binary installation failed - exit code: $1, output: $2"
         MessageBox MB_ICONSTOP|MB_OK "Failed to install DDEV binary. Error: $2"
         Abort
     ${EndIf}
@@ -706,6 +726,7 @@ Function InstallWSL2Common
     Pop $1
     Pop $2
     ${If} $1 != 0
+        DetailPrint "ERROR: Failed to make DDEV binary executable - exit code: $1, output: $2"
         MessageBox MB_ICONSTOP|MB_OK "Failed to make DDEV binary executable. Error: $2"
         Abort
     ${EndIf}
@@ -716,6 +737,7 @@ Function InstallWSL2Common
     Pop $1
     Pop $2
     ${If} $1 != 0
+        DetailPrint "ERROR: ddev-hostname binary installation failed - exit code: $1, output: $2"
         MessageBox MB_ICONSTOP|MB_OK "Failed to install ddev-hostname binary. Error: $2"
         Abort
     ${EndIf}
@@ -725,6 +747,7 @@ Function InstallWSL2Common
     Pop $1
     Pop $2
     ${If} $1 != 0
+        DetailPrint "ERROR: Failed to make ddev-hostname binary executable - exit code: $1, output: $2"
         MessageBox MB_ICONSTOP|MB_OK "Failed to make ddev-hostname binary executable. Error: $2"
         Abort
     ${EndIf}
@@ -743,6 +766,7 @@ Function InstallWSL2Common
         Pop $1
         Pop $2
         ${If} $1 != 0
+            DetailPrint "ERROR: Failed to get WSL2 username - exit code: $1, output: $2"
             MessageBox MB_ICONSTOP|MB_OK "Failed to get WSL2 username. Error: $2"
             Abort
         ${EndIf}
@@ -770,6 +794,7 @@ Function InstallWSL2Common
     Pop $1
     Pop $0
     ${If} $1 != 0
+        DetailPrint "ERROR: DDEV version check failed - exit code: $1, output: $0"
         MessageBox MB_ICONSTOP|MB_OK "WSL($SELECTED_DISTRO) doesn't seem to have working 'ddev version'. Please execute it manually in $SELECTED_DISTRO to debug the problem. Error: $0"
         Abort
     ${EndIf}
@@ -786,7 +811,7 @@ Function InstallWSL2Common
     Pop $1
     Pop $0
     ${If} $1 != 0
-        DetailPrint "ERROR: Final validation failed - DDEV is not working properly"
+        DetailPrint "ERROR: Final DDEV validation failed - exit code: $1, output: $0"
         MessageBox MB_ICONSTOP|MB_OK "Installation validation failed. DDEV may not be working properly. Error: $0"
         SetErrorLevel 1
         Abort
@@ -814,6 +839,7 @@ Function InstallTraditionalWindows
     Pop $0
     ${If} $1 != 0
         DetailPrint "Docker provider check failed. Exit code: $1"
+        DetailPrint "ERROR: Docker provider check failed - exit code: $1, output: $0"
         ${IfNot} ${Silent}
             MessageBox MB_ICONSTOP|MB_OK "Docker provider not found or not working on Windows.$\n$\nTraditional Windows installation requires a working Docker provider like Docker Desktop or Rancher Desktop.$\n$\nPlease install Docker Desktop (https://www.docker.com/products/docker-desktop/) or Rancher Desktop (https://rancherdesktop.io/) and make sure it's running before installing DDEV."
         ${EndIf}
@@ -1132,7 +1158,7 @@ Function ParseCommandLine
     ${If} $SILENT_INSTALL_TYPE == "wsl2-docker-ce"
     ${OrIf} $SILENT_INSTALL_TYPE == "wsl2-docker-desktop"
         ${If} $SILENT_DISTRO == ""
-            DetailPrint "ERROR: /distro argument required for WSL2 installation types"
+            DetailPrint "ERROR: Missing required /distro argument for WSL2 installation type: $SILENT_INSTALL_TYPE"
             MessageBox MB_ICONSTOP|MB_OK "The /distro=<distro_name> argument is required when using /docker-ce, /docker-desktop, or /rancher-desktop.$\n$\nExample: installer.exe /docker-ce /distro=Ubuntu-22.04"
             Abort
         ${EndIf}
