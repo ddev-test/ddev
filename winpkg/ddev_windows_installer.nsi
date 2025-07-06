@@ -47,6 +47,8 @@ InstType "Minimal"
 !define MUI_ICON "graphics\ddev-install.ico"
 !define MUI_UNICON "graphics\ddev-uninstall.ico"
 
+!define MUI_FINISHPAGE_NOAUTOCLOSE
+
 !define MUI_HEADERIMAGE
 !define MUI_HEADERIMAGE_BITMAP "graphics\ddev-header.bmp"
 !define MUI_WELCOMEFINISHPAGE_BITMAP "graphics\ddev-wizard.bmp"
@@ -54,6 +56,45 @@ InstType "Minimal"
 !define MUI_ABORTWARNING
 
 ; Function declarations - must be before page definitions
+
+; InstallScriptToDistro - Copy a script from Windows temp to WSL2 distro and make it executable
+; Usage: 
+;   Push "distro_name"     ; WSL2 distro name
+;   Push "script_name.sh"  ; Script name (without path)
+;   Call InstallScriptToDistro
+;   Pop $result            ; 0 = success, non-zero = error
+Function InstallScriptToDistro
+    Pop $R0  ; Get script name from stack
+    Pop $R1  ; Get distro name from stack
+    
+    DetailPrint "Installing script $R0 to WSL2 distro $R1..."
+    
+    ; Copy script from Windows temp to WSL2 /tmp
+    nsExec::ExecToStack 'wsl -d $R1 -u root cp "/mnt/c/Windows/Temp/ddev_installer/$R0" /tmp/'
+    Pop $R2  ; Exit code
+    Pop $R3  ; Output
+    
+    ${If} $R2 != 0
+        DetailPrint "Failed to copy script $R0 to distro $R1: $R3"
+        Push $R2
+        Return
+    ${EndIf}
+    
+    ; Make script executable
+    nsExec::ExecToStack 'wsl -d $R1 -u root chmod +x /tmp/$R0'
+    Pop $R2  ; Exit code  
+    Pop $R3  ; Output
+    
+    ${If} $R2 != 0
+        DetailPrint "Failed to make script $R0 executable in distro $R1: $R3"
+        Push $R2
+        Return
+    ${EndIf}
+    
+    DetailPrint "Successfully installed script $R0 to /tmp/$R0 in distro $R1"
+    Push 0  ; Success
+FunctionEnd
+
 Function DistroSelectionPage
     DetailPrint "Starting DistroSelectionPage..."
     ${If} $INSTALL_OPTION != "wsl2-docker-ce"
@@ -323,6 +364,7 @@ SectionGroup /e "${PRODUCT_NAME}"
             SetOutPath "C:\Windows\Temp\ddev_installer"
             File /oname=ddev_linux "..\.gotmp\bin\linux_${TARGET_ARCH}\ddev"
             File /oname=ddev-hostname_linux "..\.gotmp\bin\linux_${TARGET_ARCH}\ddev-hostname"
+            File /oname=show_caroot.sh "scripts\show_caroot.sh"
         ${EndIf}
 
         ; Install icons
@@ -981,12 +1023,24 @@ Function SetupMkcertInWSL2
     ReadRegStr $R3 HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "WSLENV"
     ; DetailPrint "Windows WSLENV environment variable: $R3"
     
-    ; Verify CAROOT is accessible in WSL2
-    DetailPrint "Verifying CAROOT is accessible in WSL2..."
-    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO bash -c "echo CAROOT=$$CAROOT"'
+    ; Install CAROOT check script to WSL2 distro
+    Push $SELECTED_DISTRO
+    Push "show_caroot.sh"
+    Call InstallScriptToDistro
+    Pop $R8  ; Check result
+    ${If} $R8 != 0
+        DetailPrint "Failed to install show_caroot.sh script"
+        MessageBox MB_ICONSTOP|MB_OK "Failed to install CAROOT check script to WSL2 distro"
+        Abort
+    ${EndIf}
+    
+    DetailPrint "Running CAROOT check..."
+    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO bash /tmp/show_caroot.sh'
     Pop $R0
     Pop $R1
-    DetailPrint "WSL2 CAROOT check result: $R1"
+    DetailPrint "CAROOT script exit code: $R0"
+    DetailPrint "CAROOT value from script: '$R1'"
+    MessageBox MB_ICONINFORMATION|MB_OK "CAROOT Check Results:$\r$\nDistro: $SELECTED_DISTRO$\r$\nExit Code: $R0$\r$\nCAROOT: '$R1'"
     
     ; Validate that WSL2 CAROOT is accessible
     ${If} $R0 = 0
@@ -1023,21 +1077,17 @@ Function SetupMkcertInWSL2
         DetailPrint "Failed to check CAROOT in WSL2"
         MessageBox MB_ICONEXCLAMATION|MB_OK "Failed to access CAROOT environment variable in WSL2. Certificate sharing may not work properly."
     ${EndIf}
-    
-    ; Run mkcert -install in WSL2
-    DetailPrint "Running mkcert -install in WSL2..."
-    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root mkcert -install'
-    Pop $R0
-    Pop $R1
-    
-    ${If} $R0 = 0
-        DetailPrint "mkcert -install completed successfully in WSL2."
-        DetailPrint "WSL2 mkcert output: $R1"
-    ${Else}
-        DetailPrint "mkcert -install failed in WSL2 with exit code: $R0"
-        DetailPrint "WSL2 mkcert error: $R1"
-        MessageBox MB_ICONEXCLAMATION|MB_OK "mkcert -install failed in WSL2 with exit code: $R0. Error: $R1. You may need to run 'mkcert -install' manually in WSL2 later."
-    ${EndIf}
+
+    ; Remove temporary passwordless sudo
+    ;DetailPrint "Removing temporary passwordless sudo..."
+    ;nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root rm -f /etc/sudoers.d/temp-mkcert-install'
+    ;Pop $R6
+    ;Pop $R7
+    ;${If} $R6 != 0
+    ;    DetailPrint "Warning: Failed to remove temporary sudoers entry: $R7"
+    ;${Else}
+    ;    DetailPrint "Temporary sudoers entry removed successfully"
+    ;${EndIf}
 
 FunctionEnd
 
