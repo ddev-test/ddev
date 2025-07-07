@@ -70,25 +70,30 @@ func cleanupTestDistro(t *testing.T) {
 
 	// Convert UTF-16 output to UTF-8 by removing null bytes
 	cleanOut := strings.ReplaceAll(out, "\x00", "")
-	t.Logf("WSL distros list: %q", cleanOut)
+	//t.Logf("WSL distros list: %q", cleanOut)
 
 	if strings.Contains(cleanOut, testDistroName) {
-		t.Logf("Test distro %s exists, attempting to remove", testDistroName)
+		out, _ := exec.RunHostCommand("wsl.exe", "-d", testDistroName, "bash", "-c", "(ddev poweroff || true) && rm -rf ~/tp")
+		t.Logf("ddev poweroff: err=%v, output: %s", err, out)
 
+		out, err := exec.RunHostCommand("wsl.exe", "-d", testDistroName, "-u", "root", "bash", "-c", "(mkcert -uninstall || true) && (apt-get remove ddev docker-ce-cli docker-ce || true)")
+		t.Logf("distro cleanup: err=%v, output: %s", err, out)
+
+		//t.Logf("Test distro %s exists, attempting to remove", testDistroName)
 		// Unregister (delete) the distro
-		out, err := exec.RunHostCommand("wsl.exe", "--unregister", testDistroName)
-		if err != nil {
-			t.Logf("Failed to unregister distro %s: %v, output: %s", testDistroName, err, out)
-		} else {
-			t.Logf("Successfully removed test distro: %s", testDistroName)
-		}
+		//out, err = exec.RunHostCommand("wsl.exe", "--unregister", testDistroName)
+		//if err != nil {
+		//	t.Logf("Failed to unregister distro %s: %v, output: %s", testDistroName, err, out)
+		//} else {
+		//	t.Logf("Successfully removed test distro: %s", testDistroName)
+		//}
 	}
 }
 
 // createTestWSL2Distro creates a fresh Ubuntu 22.04 WSL2 distro for testing
 func createTestWSL2Distro(t *testing.T) {
 	require := require.New(t)
-	t.Logf("Creating test WSL2 distro: %s", testDistroName)
+	t.Logf("Creating or updating test distro: %s", testDistroName)
 
 	// Install the WSL distro without launching
 	t.Logf("Installing WSL distro %s", testDistroName)
@@ -109,8 +114,8 @@ func createTestWSL2Distro(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// Create an unprivileged default user
-	t.Logf("Creating unprivileged default user")
-	out, err = exec.RunHostCommand("wsl.exe", "-d", testDistroName, "-u", "root", "bash", "-c", "useradd -m -s /bin/bash testuser && echo 'testuser:testpass' | chpasswd && usermod -aG sudo testuser")
+	t.Logf("Creating unprivileged default user if it doesn't exist")
+	out, err = exec.RunHostCommand("wsl.exe", "-d", testDistroName, "-u", "root", "bash", "-c", "if ! id -u testuser; then useradd -m -s /bin/bash testuser && echo 'testuser:testpass' | chpasswd && usermod -aG sudo testuser; fi")
 	require.NoError(err, "Failed to create test user: %v, output=%v", err, out)
 
 	// Set testuser as the default user using wsl --manage
@@ -174,9 +179,7 @@ func testBasicDdevFunctionality(t *testing.T) {
 	t.Logf("HTTPS site responding correctly")
 
 	// Test using windows PowerShell to check HTTPS
-	// powershell.exe -NoProfile -ExecutionPolicy Bypass `
-	//  -Command "Invoke-RestMethod 'https://tp.ddev.site' -ErrorAction Stop"
-	out, err = exec.RunHostCommand("powershell.exe ", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", fmt.Sprintf("Invoke-RestMethod 'https://%s.ddev.site' -ErrorAction Stop", testDistroName))
+	out, err = exec.RunHostCommand("powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", fmt.Sprintf("Invoke-RestMethod 'https://%s.ddev.site' -ErrorAction Stop", projectName))
 	require.NoError(err, "HTTPS check failed: %v, output: %s", err, out)
 	require.Contains(out, "Hello from DDEV!")
 	t.Logf("Project working and accessible from Windows")
