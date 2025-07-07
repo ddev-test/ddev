@@ -29,11 +29,11 @@ func TestWindowsInstallerWSL2DockerCE(t *testing.T) {
 	require := require.New(t)
 
 	// Create fresh test WSL2 distro
-	cleanupTestDistro(t)
+	cleanupTestEnv(t)
 	createTestWSL2Distro(t)
 	//t.Cleanup(func() {
 	//	// Cleanup any existing test distro
-	//	cleanupTestDistro(t)
+	//	cleanupTestEnv(t)
 	//})
 
 	// Get absolute path to installer
@@ -57,8 +57,33 @@ func TestWindowsInstallerWSL2DockerCE(t *testing.T) {
 
 // Helper functions
 
-// cleanupTestDistro removes the test WSL2 distro if it exists
-func cleanupTestDistro(t *testing.T) {
+// cleanupTestEnv removes the test WSL2 distro and runs the uninstaller if it exists
+func cleanupTestEnv(t *testing.T) {
+	t.Logf("Cleaning up test environment")
+
+	// First, run the uninstaller to clean up Windows-side components
+	// Try common installation locations for the uninstaller
+	possiblePaths := []string{
+		`C:\Program Files\DDEV\ddev_uninstall.exe`,
+	}
+
+	var uninstallerPath string
+	for _, path := range possiblePaths {
+		if fileutil.FileExists(path) {
+			uninstallerPath = path
+			break
+		}
+	}
+
+	if uninstallerPath != "" {
+		t.Logf("Running uninstaller: %s", uninstallerPath)
+		out, err := exec.RunHostCommand(uninstallerPath, "/S")
+		t.Logf("Uninstaller result - err: %v, output: %s", err, out)
+	} else {
+		t.Logf("No uninstaller found (DDEV may not be installed yet)")
+	}
+
+	// Clean up test distro
 	t.Logf("Cleaning up test distro: %s", testDistroName)
 
 	// Check if distro exists
@@ -73,10 +98,13 @@ func cleanupTestDistro(t *testing.T) {
 	//t.Logf("WSL distros list: %q", cleanOut)
 
 	if strings.Contains(cleanOut, testDistroName) {
-		out, _ := exec.RunHostCommand("wsl.exe", "-d", testDistroName, "bash", "-c", "(ddev poweroff || true) && rm -rf ~/tp")
+
+		// Get distro back to a fairly normal pre-ddev state.
+		// Makes test run much faster than completely deleting the distro.
+		out, _ := exec.RunHostCommand("wsl.exe", "-d", testDistroName, "bash", "-c", "(ddev poweroff || true) && (ddev stop --unlist -a) && rm -rf ~/tp")
 		t.Logf("ddev poweroff: err=%v, output: %s", err, out)
 
-		out, err := exec.RunHostCommand("wsl.exe", "-d", testDistroName, "-u", "root", "bash", "-c", "(mkcert -uninstall || true) && (apt-get remove ddev docker-ce-cli docker-ce || true)")
+		out, err := exec.RunHostCommand("wsl.exe", "-d", testDistroName, "-u", "root", "bash", "-c", "(mkcert -uninstall || true) && (apt-get remove -y ddev docker-ce-cli docker-ce || true)")
 		t.Logf("distro cleanup: err=%v, output: %s", err, out)
 
 		//t.Logf("Test distro %s exists, attempting to remove", testDistroName)

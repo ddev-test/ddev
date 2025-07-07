@@ -1083,8 +1083,10 @@ Function SetupMkcertInWSL2
 FunctionEnd
 
 Function un.onInit
-  MessageBox MB_ICONQUESTION|MB_YESNO|MB_DEFBUTTON2 "Are you sure you want to completely remove $(^Name) and all of its components?" IDYES DoUninstall
-  Abort
+  ${IfNot} ${Silent}
+    MessageBox MB_ICONQUESTION|MB_YESNO|MB_DEFBUTTON2 "Are you sure you want to completely remove $(^Name) and all of its components?" IDYES DoUninstall
+    Abort
+  ${EndIf}
 
 DoUninstall:
   ; Switch to 64 bit view and disable FS redirection
@@ -1294,15 +1296,20 @@ Function un.mkcertUninstall
         
         ; Check if setup was done
         ${If} $0 == 1
-            ; Get user confirmation
-            MessageBox MB_ICONQUESTION|MB_YESNO|MB_DEFBUTTON2 "mkcert was found in this installation. Do you like to remove the mkcert configuration?" /SD IDNO IDYES +2
-            Goto Skip
-            
-            MessageBox MB_ICONINFORMATION|MB_OK "Now running mkcert to disable trusted https. Please accept the mkcert dialog box that may follow."
-            
-            nsExec::ExecToStack '"$INSTDIR\mkcert.exe" -uninstall'
-            Pop $0 ; get return value
-            Pop $1 ; get output
+            ${If} ${Silent}
+                ; Silent mode - skip mkcert -uninstall to avoid UAC/certificate store popups
+                ; Just clean up the CAROOT directory manually if possible
+            ${Else}
+                ; Interactive mode - get user confirmation
+                MessageBox MB_ICONQUESTION|MB_YESNO|MB_DEFBUTTON2 "mkcert was found in this installation. Do you like to remove the mkcert configuration?" /SD IDNO IDYES +2
+                Goto Skip
+                
+                MessageBox MB_ICONINFORMATION|MB_OK "Now running mkcert to disable trusted https. Please accept the mkcert dialog box that may follow."
+                
+                nsExec::ExecToStack '"$INSTDIR\mkcert.exe" -uninstall'
+                Pop $0 ; get return value
+                Pop $1 ; get output
+            ${EndIf}
             
         Skip:
         ${EndIf}
