@@ -45,73 +45,70 @@ func TestWindowsInstallerWSL2(t *testing.T) {
 		},
 	}
 
-	require := require.New(t)
-
 	for _, tc := range testCases {
-		if tc.skipCondition() {
-			t.Logf("Skipping %s test - prerequisites not met", tc.name)
-			continue
-		}
-
-		t.Logf("=== Running %s test ===", tc.name)
-
-		// Create fresh test WSL2 distro
-		cleanupTestEnv(t, tc.distro)
-		configureTestWSL2Distro(t, tc.distro)
-
-		// Ensure ddev is powered off after this test case, even if it fails
-		t.Cleanup(func() {
-			t.Logf("Cleaning up %s test - powering off ddev", tc.name)
-			_, _ = exec.RunHostCommand("wsl.exe", "-d", tc.distro, "bash", "-c", "ddev poweroff")
-		})
-
-		// Get absolute path to installer
-		wd, err := os.Getwd()
-		require.NoError(err)
-		installerFullPath := filepath.Join(wd, installerPath)
-		require.True(fileutil.FileExists(installerFullPath), "Installer not found at %s", installerFullPath)
-
-		// Run installer with specified args
-		t.Logf("Running installer: %s %v", installerFullPath, tc.installerArgs)
-
-		// Add some debugging before installer run
-		t.Logf("Pre-installer: checking system state...")
-		out, _ := exec.RunHostCommand("tasklist.exe", "/FI", "IMAGENAME eq msiexec.exe")
-		t.Logf("MSI processes running: %s", out)
-
-		out, err = exec.RunHostCommand(installerFullPath, tc.installerArgs...)
-		if err != nil {
-			t.Logf("Installer failed with error: %v", err)
-			t.Logf("Installer output: %s", out)
-
-			// Check for specific error patterns
-			if strings.Contains(err.Error(), "0xc0000005") {
-				t.Logf("ACCESS VIOLATION detected in installer")
-				// Try to get more info about what was running
-				procOut, _ := exec.RunHostCommand("tasklist.exe", "/FI", "IMAGENAME eq ddev_windows_amd64_installer.exe")
-				t.Logf("Installer processes: %s", procOut)
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.skipCondition() {
+				t.Skipf("Skipping %s test - prerequisites not met", tc.name)
 			}
 
-			require.NoError(err, "Installer failed: %v, output: %s", err, out)
-		}
-		t.Logf("Installer completed successfully")
-		t.Logf("Installer output: %s", out)
+			require := require.New(t)
 
-		// Immediately check if ddev is available to verify installer waited for completion
-		out, err = exec.RunHostCommand("wsl.exe", "-d", tc.distro, "bash", "-c", "ddev version")
-		if err != nil {
-			t.Logf("DDEV not immediately available after installer - installer may not be waiting: %v, output: %s", err, out)
-		} else {
-			t.Logf("DDEV immediately available after installer - installer properly waited for completion")
-		}
+			// Create fresh test WSL2 distro
+			cleanupTestEnv(t, tc.distro)
+			configureTestWSL2Distro(t, tc.distro)
 
-		// Test that ddev is installed and working
-		testDdevInstallation(t, tc.distro)
+			// Ensure ddev is powered off after this test case, even if it fails
+			t.Cleanup(func() {
+				t.Logf("Cleaning up %s test - powering off ddev", tc.name)
+				_, _ = exec.RunHostCommand("wsl.exe", "-d", tc.distro, "bash", "-c", "ddev poweroff")
+			})
 
-		// Test basic ddev functionality
-		testBasicDdevFunctionality(t, tc.distro)
+			// Get absolute path to installer
+			wd, err := os.Getwd()
+			require.NoError(err)
+			installerFullPath := filepath.Join(wd, installerPath)
+			require.True(fileutil.FileExists(installerFullPath), "Installer not found at %s", installerFullPath)
 
-		t.Logf("=== %s test completed successfully ===", tc.name)
+			// Run installer with specified args
+			t.Logf("Running installer: %s %v", installerFullPath, tc.installerArgs)
+
+			// Add some debugging before installer run
+			t.Logf("Pre-installer: checking system state...")
+			out, _ := exec.RunHostCommand("tasklist.exe", "/FI", "IMAGENAME eq msiexec.exe")
+			t.Logf("MSI processes running: %s", out)
+
+			out, err = exec.RunHostCommand(installerFullPath, tc.installerArgs...)
+			if err != nil {
+				t.Logf("Installer failed with error: %v", err)
+				t.Logf("Installer output: %s", out)
+
+				// Check for specific error patterns
+				if strings.Contains(err.Error(), "0xc0000005") {
+					t.Logf("ACCESS VIOLATION detected in installer")
+					// Try to get more info about what was running
+					procOut, _ := exec.RunHostCommand("tasklist.exe", "/FI", "IMAGENAME eq ddev_windows_amd64_installer.exe")
+					t.Logf("Installer processes: %s", procOut)
+				}
+
+				require.NoError(err, "Installer failed: %v, output: %s", err, out)
+			}
+			t.Logf("Installer completed successfully")
+			t.Logf("Installer output: %s", out)
+
+			// Immediately check if ddev is available to verify installer waited for completion
+			out, err = exec.RunHostCommand("wsl.exe", "-d", tc.distro, "bash", "-c", "ddev version")
+			if err != nil {
+				t.Logf("DDEV not immediately available after installer - installer may not be waiting: %v, output: %s", err, out)
+			} else {
+				t.Logf("DDEV immediately available after installer - installer properly waited for completion")
+			}
+
+			// Test that ddev is installed and working
+			testDdevInstallation(t, tc.distro)
+
+			// Test basic ddev functionality
+			testBasicDdevFunctionality(t, tc.distro)
+		})
 	}
 }
 
