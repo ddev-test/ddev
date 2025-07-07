@@ -112,6 +112,46 @@ func TestWindowsInstallerWSL2(t *testing.T) {
 	}
 }
 
+// TestWindowsInstallerTraditional tests the Traditional Windows installation path
+func TestWindowsInstallerTraditional(t *testing.T) {
+	if os.Getenv("DDEV_TEST_USE_REAL_INSTALLER") == "" {
+		t.Skip("Skipping installer test, set DDEV_TEST_USE_REAL_INSTALLER=true to run")
+	}
+	// Check if Docker Desktop is working on Windows
+	if !isDockerDesktopWorkingOnWindows() {
+		t.Skip("Skipping Traditional Windows test - Docker Desktop not working on Windows")
+	}
+
+	require := require.New(t)
+
+	// Clean up any existing DDEV installation
+	cleanupTraditionalWindowsEnv(t)
+
+	// Ensure cleanup after test
+	t.Cleanup(func() {
+		t.Logf("Cleaning up Traditional Windows test")
+		cleanupTraditionalWindowsEnv(t)
+	})
+
+	// Get absolute path to installer
+	wd, err := os.Getwd()
+	require.NoError(err)
+	installerFullPath := filepath.Join(wd, installerPath)
+	require.True(fileutil.FileExists(installerFullPath), "Installer not found at %s", installerFullPath)
+
+	// Run installer with Traditional Windows option
+	t.Logf("Running installer: %s /traditional /S", installerFullPath)
+	out, err := exec.RunHostCommand(installerFullPath, "/traditional", "/S")
+	require.NoError(err, "Installer failed: %v, output: %s", err, out)
+	t.Logf("Installer output: %s", out)
+
+	// Test that ddev is installed and working on Windows
+	testDdevTraditionalInstallation(t)
+
+	// Test basic ddev functionality on Windows
+	testBasicDdevTraditionalFunctionality(t)
+}
+
 // Helper functions
 
 // cleanupTestEnv removes the test WSL2 distro and runs the uninstaller if it exists
@@ -285,4 +325,119 @@ func isDockerProviderAvailable(distroName string) bool {
 	// Check if docker ps works in the distro
 	_, err := exec.RunHostCommand("wsl.exe", "-d", distroName, "docker", "ps")
 	return err == nil
+}
+
+// isDockerDesktopWorkingOnWindows checks if Docker Desktop is working on Windows
+func isDockerDesktopWorkingOnWindows() bool {
+	// Check if docker ps works directly on Windows
+	_, err := exec.RunHostCommand("docker.exe", "ps")
+	return err == nil
+}
+
+// cleanupTraditionalWindowsEnv removes DDEV Traditional Windows installation
+func cleanupTraditionalWindowsEnv(t *testing.T) {
+	t.Logf("Cleaning up Traditional Windows environment")
+
+	// Stop any running DDEV projects
+	_, _ = exec.RunHostCommand("ddev.exe", "poweroff")
+
+	// Run the uninstaller to clean up Windows-side components
+	possiblePaths := []string{
+		`C:\Program Files\DDEV\ddev_uninstall.exe`,
+	}
+
+	var uninstallerPath string
+	for _, path := range possiblePaths {
+		if fileutil.FileExists(path) {
+			uninstallerPath = path
+			break
+		}
+	}
+
+	if uninstallerPath != "" {
+		t.Logf("Running uninstaller: %s", uninstallerPath)
+		out, err := exec.RunHostCommand(uninstallerPath, "/S")
+		t.Logf("Uninstaller result - err: %v, output: %s", err, out)
+	} else {
+		t.Logf("No uninstaller found (DDEV may not be installed yet)")
+	}
+}
+
+// testDdevTraditionalInstallation verifies that ddev is properly installed on Windows
+func testDdevTraditionalInstallation(t *testing.T) {
+	require := require.New(t)
+	t.Logf("Testing ddev installation on Windows")
+
+	// Test ddev version
+	out, err := exec.RunHostCommand("ddev.exe", "version")
+	require.NoError(err, "ddev version failed: %v, output: %s", err, out)
+	require.Contains(out, "DDEV version")
+	t.Logf("ddev version output: %s", out)
+
+	// Test ddev-hostname
+	out, err = exec.RunHostCommand("ddev-hostname.exe", "--help")
+	require.NoError(err, "ddev-hostname failed: %v, output: %s", err, out)
+	t.Logf("ddev-hostname available")
+
+	// Verify files exist in expected location
+	ddevPath := `C:\Program Files\DDEV\ddev.exe`
+	hostnameePath := `C:\Program Files\DDEV\ddev-hostname.exe`
+	require.True(fileutil.FileExists(ddevPath), "ddev.exe not found at %s", ddevPath)
+	require.True(fileutil.FileExists(hostnameePath), "ddev-hostname.exe not found at %s", hostnameePath)
+}
+
+// testBasicDdevTraditionalFunctionality tests basic ddev project creation and start on Windows
+func testBasicDdevTraditionalFunctionality(t *testing.T) {
+	require := require.New(t)
+	t.Logf("Testing basic ddev functionality on Windows")
+
+	// Create a temporary directory for the test project
+	tempDir, err := os.MkdirTemp("", "ddev-test-")
+	require.NoError(err, "Failed to create temp directory: %v", err)
+	t.Cleanup(func() { os.RemoveAll(tempDir) })
+
+	projectName := "testproj"
+	projectDir := filepath.Join(tempDir, projectName)
+
+	// Create test project directory
+	err = os.MkdirAll(projectDir, 0755)
+	require.NoError(err, "Failed to create project directory: %v", err)
+
+	// Create a simple index.html
+	indexPath := filepath.Join(projectDir, "index.html")
+	err = os.WriteFile(indexPath, []byte("Hello from DDEV Traditional!"), 0644)
+	require.NoError(err, "Failed to create index.html: %v", err)
+
+	// Change to project directory and initialize ddev project
+	originalDir, err := os.Getwd()
+	require.NoError(err, "Failed to get current directory: %v", err)
+	t.Cleanup(func() { os.Chdir(originalDir) })
+
+	err = os.Chdir(projectDir)
+	require.NoError(err, "Failed to change to project directory: %v", err)
+
+	// Initialize ddev project
+	out, err := exec.RunHostCommand("ddev.exe", "config", "--auto")
+	require.NoError(err, "ddev config failed: %v, output: %s", err, out)
+	t.Logf("ddev config output: %s", out)
+
+	// Start the project
+	out, err = exec.RunHostCommand("ddev.exe", "start", "-y")
+	require.NoError(err, "ddev start failed: %v, output: %s", err, out)
+	t.Logf("ddev start output: %s", out)
+
+	// Ensure cleanup
+	t.Cleanup(func() {
+		_, _ = exec.RunHostCommand("ddev.exe", "delete", "-Oy")
+		_, _ = exec.RunHostCommand("ddev.exe", "poweroff")
+	})
+
+	// Test HTTPS response from Windows
+	siteURL := fmt.Sprintf("https://%s.ddev.site", projectName)
+	out, err = exec.RunHostCommand("powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", fmt.Sprintf("Invoke-RestMethod '%s' -ErrorAction Stop", siteURL))
+	require.NoError(err, "HTTPS check failed: %v, output: %s", err, out)
+	require.Contains(out, "Hello from DDEV Traditional!")
+	t.Logf("Project working and accessible from Windows: %s", siteURL)
+
+	t.Logf("Basic Traditional Windows ddev functionality test completed successfully")
 }
