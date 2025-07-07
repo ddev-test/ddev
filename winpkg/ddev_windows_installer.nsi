@@ -1192,6 +1192,12 @@ Function ParseCommandLine
             Abort
         ${EndIf}
     ${EndIf}
+    
+    ; If any install type was specified via command line, enable silent mode
+    ${If} $SILENT_INSTALL_TYPE != ""
+        SetSilent silent
+        DetailPrint "Command line install type detected, enabling silent mode"
+    ${EndIf}
 FunctionEnd
 
 Function .onInit
