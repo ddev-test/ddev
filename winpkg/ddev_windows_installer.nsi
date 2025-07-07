@@ -1230,7 +1230,9 @@ FunctionEnd
 Function ShowErrorAndAbort
     Exch $R0  ; Get error message from stack
     DetailPrint "INSTALLATION ERROR: $R0"
-    MessageBox MB_ICONSTOP|MB_OK "$R0$\n$\nUse 'Show details' for more information. Then click 'Cancel', fix the issue, and retry the installer."
+    ${IfNot} ${Silent}
+        MessageBox MB_ICONSTOP|MB_OK "$R0$\n$\nUse 'Show details' for more information. Then click 'Cancel', fix the issue, and retry the installer."
+    ${EndIf}
     Abort
 FunctionEnd
 
