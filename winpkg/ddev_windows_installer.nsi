@@ -32,6 +32,7 @@ Var /GLOBAL INSTALL_OPTION
 Var /GLOBAL SELECTED_DISTRO
 Var /GLOBAL SILENT_INSTALL_TYPE
 Var /GLOBAL SILENT_DISTRO
+Var /GLOBAL WINDOWS_CAROOT
 Var StartMenuGroup
 
 !define REG_INSTDIR_ROOT "HKLM"
@@ -364,7 +365,8 @@ SectionGroup /e "${PRODUCT_NAME}"
             SetOutPath "C:\Windows\Temp\ddev_installer"
             File /oname=ddev_linux "..\.gotmp\bin\linux_${TARGET_ARCH}\ddev"
             File /oname=ddev-hostname_linux "..\.gotmp\bin\linux_${TARGET_ARCH}\ddev-hostname"
-            File /oname=show_caroot.sh "scripts\show_caroot.sh"
+            File /oname=mkcert_install.sh "scripts\mkcert_install.sh"
+            File /oname=install_temp_sudoers.sh "scripts\install_temp_sudoers.sh"
         ${EndIf}
 
         ; Install icons
@@ -937,7 +939,7 @@ Function RunMkcertInstall
         ; Set up CAROOT environment variable for WSL2 sharing (only for WSL2 installs)
         ${If} $INSTALL_OPTION == "wsl2-docker-ce"
         ${OrIf} $INSTALL_OPTION == "wsl2-docker-desktop"
-            Call SetupMkcertForWSL2
+            Call SetupWindowsCAROOT
         ${EndIf}
     ${Else}
         DetailPrint "mkcert.exe -install failed with exit code: $R0"
@@ -945,7 +947,7 @@ Function RunMkcertInstall
     ${EndIf}
 FunctionEnd
 
-Function SetupMkcertForWSL2
+Function SetupWindowsCAROOT
     DetailPrint "Setting up mkcert certificate sharing with WSL2..."
     
     ; Get the CAROOT directory from mkcert (mkcert -install already completed)
@@ -1017,77 +1019,66 @@ Function SetupMkcertInWSL2
     
     ; Check current Windows CAROOT environment variable from registry
     ReadRegStr $R2 HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "CAROOT"
-    ; DetailPrint "Windows CAROOT environment variable: $R2"
+    StrCpy $WINDOWS_CAROOT $R2  ; Save to global variable for later use
+    DetailPrint "Windows CAROOT environment variable: $WINDOWS_CAROOT"
     
     ; Check current Windows WSLENV environment variable from registry
     ReadRegStr $R3 HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "WSLENV"
     ; DetailPrint "Windows WSLENV environment variable: $R3"
     
-    ; Install CAROOT check script to WSL2 distro
+    ; Install and run temporary sudoers script
     Push $SELECTED_DISTRO
-    Push "show_caroot.sh"
+    Push "install_temp_sudoers.sh"
     Call InstallScriptToDistro
-    Pop $R8  ; Check result
-    ${If} $R8 != 0
-        DetailPrint "Failed to install show_caroot.sh script"
-        MessageBox MB_ICONSTOP|MB_OK "Failed to install CAROOT check script to WSL2 distro"
+    Pop $R4
+    ${If} $R4 != 0
+        DetailPrint "Failed to install temporary sudoers script"
+        MessageBox MB_ICONSTOP|MB_OK "Failed to install temporary sudoers script to WSL2 distro"
         Abort
     ${EndIf}
     
-    DetailPrint "Running CAROOT check..."
-    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO bash /tmp/show_caroot.sh'
+    DetailPrint "Running temporary sudoers installation..."
+    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root bash /tmp/install_temp_sudoers.sh'
+    Pop $R4
+    Pop $R5
+    ${If} $R4 != 0
+        DetailPrint "Failed to create temporary sudoers: $R5"
+        MessageBox MB_ICONSTOP|MB_OK "Failed to create temporary sudoers entry: $R5"
+        Abort
+    ${Else}
+        DetailPrint "Temporary sudoers created successfully"
+    ${EndIf}
+    
+    ; Install mkcert_install.sh check script to WSL2 distro
+    ; We use this, which consumes WINDOWS_CAROOT, because wsl commands issued
+    ; from installer don't get the CAROOT environment variable.
+    Push $SELECTED_DISTRO
+    Push "mkcert_install.sh"
+    Call InstallScriptToDistro
+    Pop $R8  ; Check result
+    ${If} $R8 != 0
+        DetailPrint "Failed to install mkcert_install.sh script"
+        MessageBox MB_ICONSTOP|MB_OK "Failed to mkcert_install.sh script to WSL2 distro"
+        Abort
+    ${EndIf}
+    
+    DetailPrint "Running /tmp/mkcert_install.sh in WSL2 distro: $SELECTED_DISTRO"
+    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO bash -c "WINDOWS_CAROOT=\"$WINDOWS_CAROOT\" /tmp/mkcert_install.sh"'
     Pop $R0
     Pop $R1
-    DetailPrint "CAROOT script exit code: $R0"
-    DetailPrint "CAROOT value from script: '$R1'"
-    MessageBox MB_ICONINFORMATION|MB_OK "CAROOT Check Results:$\r$\nDistro: $SELECTED_DISTRO$\r$\nExit Code: $R0$\r$\nCAROOT: '$R1'"
-    
-    ; Validate that WSL2 CAROOT is accessible
-    ${If} $R0 = 0
-        ; Check that CAROOT isn't empty and starts with /mnt (indicating Windows path)
-        Push $R1
-        Push "CAROOT="
-        Call StrContains
-        Pop $R4
-        ${If} $R4 != ""
-        ${AndIf} $R1 != "CAROOT="
-            Push $R1
-            Push "/mnt"
-            Call StrContains
-            Pop $R5
-            ${If} $R5 != ""
-                DetailPrint "CAROOT appears valid, testing accessibility..."
-                ; Test if CAROOT directory is accessible
-                nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO bash -c "ls $$CAROOT >/dev/null 2>&1"'
-                Pop $R6
-                Pop $R7
-                
-                ${If} $R6 != 0
-                    MessageBox MB_ICONEXCLAMATION|MB_OK "CAROOT directory is not accessible from WSL2. Certificate sharing may not work properly."
-                ${Else}
-                    DetailPrint "WSL2 CAROOT validation successful"
-                ${EndIf}
-            ${Else}
-                MessageBox MB_ICONEXCLAMATION|MB_OK "CAROOT does not appear to be a Windows path accessible from WSL2. Certificate sharing may not work properly."
-            ${EndIf}
-        ${Else}
-            MessageBox MB_ICONEXCLAMATION|MB_OK "CAROOT environment variable is empty in WSL2. Certificate sharing may not work properly."
-        ${EndIf}
-    ${Else}
-        DetailPrint "Failed to check CAROOT in WSL2"
-        MessageBox MB_ICONEXCLAMATION|MB_OK "Failed to access CAROOT environment variable in WSL2. Certificate sharing may not work properly."
-    ${EndIf}
+    DetailPrint "mkcert_install.sh script exit code: $R0"
+    DetailPrint "mkcert_install.sh output: '$R1'"
 
     ; Remove temporary passwordless sudo
-    ;DetailPrint "Removing temporary passwordless sudo..."
-    ;nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root rm -f /etc/sudoers.d/temp-mkcert-install'
-    ;Pop $R6
-    ;Pop $R7
-    ;${If} $R6 != 0
-    ;    DetailPrint "Warning: Failed to remove temporary sudoers entry: $R7"
-    ;${Else}
-    ;    DetailPrint "Temporary sudoers entry removed successfully"
-    ;${EndIf}
+    DetailPrint "Removing temporary passwordless sudo..."
+    nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO -u root rm -f /etc/sudoers.d/temp-mkcert-install'
+    Pop $R6
+    Pop $R7
+    ${If} $R6 != 0
+        DetailPrint "Warning: Failed to remove temporary sudoers entry: $R7"
+    ${Else}
+        DetailPrint "Temporary sudoers entry removed successfully"
+    ${EndIf}
 
 FunctionEnd
 
