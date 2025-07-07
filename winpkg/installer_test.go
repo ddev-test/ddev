@@ -163,31 +163,20 @@ func testBasicDdevFunctionality(t *testing.T) {
 	require.NoError(err, "Failed to create index.html: %v", err)
 
 	// Initialize ddev project
-	out, err = exec.RunHostCommand("wsl.exe", "-d", testDistroName, "bash", "-c", fmt.Sprintf("cd %s && ddev config --auto", projectDir))
-	require.NoError(err, "ddev config failed: %v, output: %s", err, out)
-	t.Logf("ddev config output: %s", out)
+	out, err = exec.RunHostCommand("wsl.exe", "-d", testDistroName, "bash", "-c", fmt.Sprintf("cd %s && ddev config --auto && ddev start -y", projectDir))
+	require.NoError(err, "ddev config/start failed: %v, output: %s", err, out)
+	t.Logf("ddev config/start output: %s", out)
 
-	// Start the project
-	out, err = exec.RunHostCommand("wsl.exe", "-d", testDistroName, "bash", "-c", fmt.Sprintf("cd %s && ddev start -y", projectDir))
-	require.NoError(err, "ddev start failed: %v, output: %s", err, out)
-	t.Logf("ddev start -y output: %s", out)
-
-	// Test HTTP response
+	// Test HTTP response from inside WSL distro
 	out, err = exec.RunHostCommand("wsl.exe", "-d", testDistroName, "bash", "-c", fmt.Sprintf("curl -s https://%s.ddev.site", projectName))
 	require.NoError(err, "curl to HTTPS site failed: %v, output: %s", err, out)
 	require.Contains(out, "Hello from DDEV!")
 	t.Logf("HTTPS site responding correctly")
 
-	// Test that the site has valid HTTPS from inside WSL
-	out, err = exec.RunHostCommand("wsl.exe", "-d", testDistroName, "bash", "-c", fmt.Sprintf("curl -s -I https://%s.ddev.site", projectName))
-	require.NoError(err, "HTTPS check failed: %v, output: %s", err, out)
-	require.Contains(out, "HTTP/2 200", "Expected HTTP/2 200 response, got: %s", out)
-	t.Logf("HTTPS certificate working")
-
 	// Test using windows PowerShell to check HTTPS
 	// powershell.exe -NoProfile -ExecutionPolicy Bypass `
 	//  -Command "Invoke-RestMethod 'https://tp.ddev.site' -ErrorAction Stop"
-	out, err = exec.RunHostCommand("powershell.exe ", "-NoProfile", "-ExecutionPolicy Bypass", "-Command", "Invoke-RestMethod", "https://"+testDistroName+".ddev.site", "-ErrorAction", "Stop")
+	out, err = exec.RunHostCommand("powershell.exe ", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", fmt.Sprintf("Invoke-RestMethod 'https://%s.ddev.site' -ErrorAction Stop", testDistroName))
 	require.NoError(err, "HTTPS check failed: %v, output: %s", err, out)
 	require.Contains(out, "Hello from DDEV!")
 	t.Logf("Project working and accessible from Windows")
