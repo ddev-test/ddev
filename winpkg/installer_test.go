@@ -178,11 +178,19 @@ func testBasicDdevFunctionality(t *testing.T) {
 	require.Contains(out, "Hello from DDEV!")
 	t.Logf("HTTPS site responding correctly")
 
-	// Test that the site has valid HTTPS
-	out, err = exec.RunHostCommand("wsl.exe", "-d", testDistroName, "bash", "-c", fmt.Sprintf("cd %s && curl -s -I https://%s.ddev.site | head -1", projectName, projectDir))
+	// Test that the site has valid HTTPS from inside WSL
+	out, err = exec.RunHostCommand("wsl.exe", "-d", testDistroName, "bash", "-c", fmt.Sprintf("curl -s -I https://%s.ddev.site", projectName))
 	require.NoError(err, "HTTPS check failed: %v, output: %s", err, out)
-	require.Contains(out, "200 OK")
+	require.Contains(out, "HTTP/2 200", "Expected HTTP/2 200 response, got: %s", out)
 	t.Logf("HTTPS certificate working")
+
+	// Test using windows PowerShell to check HTTPS
+	// powershell.exe -NoProfile -ExecutionPolicy Bypass `
+	//  -Command "Invoke-RestMethod 'https://tp.ddev.site' -ErrorAction Stop"
+	out, err = exec.RunHostCommand("powershell.exe ", "-NoProfile", "-ExecutionPolicy Bypass", "-Command", "Invoke-RestMethod", "https://"+testDistroName+".ddev.site", "-ErrorAction", "Stop")
+	require.NoError(err, "HTTPS check failed: %v, output: %s", err, out)
+	require.Contains(out, "Hello from DDEV!")
+	t.Logf("Project working and accessible from Windows")
 
 	_, _ = exec.RunHostCommand("wsl.exe", "-d", testDistroName, "bash", "-c", "ddev poweroff")
 
