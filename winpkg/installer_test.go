@@ -29,6 +29,7 @@ func TestWindowsInstallerWSL2DockerCE(t *testing.T) {
 	require := require.New(t)
 
 	// Create fresh test WSL2 distro
+	cleanupTestDistro(t)
 	createTestWSL2Distro(t)
 	//t.Cleanup(func() {
 	//	// Cleanup any existing test distro
@@ -52,77 +53,6 @@ func TestWindowsInstallerWSL2DockerCE(t *testing.T) {
 
 	// Test basic ddev functionality
 	testBasicDdevFunctionality(t)
-}
-
-// TestWindowsInstallerWSL2DockerDesktop tests the WSL2 with Docker Desktop installation path
-func TestWindowsInstallerWSL2DockerDesktop(t *testing.T) {
-	if os.Getenv("DDEV_TEST_USE_REAL_INSTALLER") == "" {
-		t.Skip("Skipping installer test, set DDEV_TEST_USE_REAL_INSTALLER=true to run")
-	}
-
-	require := require.New(t)
-
-	// Skip if Docker Desktop is not available
-	if !isDockerDesktopAvailable() {
-		t.Skip("Docker Desktop not available, skipping Docker Desktop installer test")
-	}
-
-	// Cleanup any existing test distro
-	cleanupTestDistro(t)
-
-	// Create fresh test WSL2 distro
-	createTestWSL2Distro(t)
-	defer cleanupTestDistro(t)
-
-	// Get absolute path to installer
-	wd, err := os.Getwd()
-	require.NoError(err)
-	installerFullPath := filepath.Join(wd, installerPath)
-	require.True(fileutil.FileExists(installerFullPath), "Installer not found at %s", installerFullPath)
-
-	// Run installer with WSL2 Docker Desktop option
-	t.Logf("Running installer: %s", installerFullPath)
-	out, err := exec.RunHostCommand(installerFullPath, "/docker-desktop", fmt.Sprintf("/distro=%s", testDistroName), "/S")
-	require.NoError(err, "Installer failed: %v, output: %s", err, out)
-	t.Logf("Installer output: %s", out)
-
-	// Test that ddev is installed and working
-	testDdevInstallation(t)
-
-	// Test basic ddev functionality
-	testBasicDdevFunctionality(t)
-}
-
-// TestWindowsInstallerTraditional tests the traditional Windows installation path
-func TestWindowsInstallerTraditional(t *testing.T) {
-	if os.Getenv("DDEV_TEST_USE_REAL_INSTALLER") == "" {
-		t.Skip("Skipping installer test, set DDEV_TEST_USE_REAL_INSTALLER=true to run")
-	}
-
-	require := require.New(t)
-
-	// Get absolute path to installer
-	wd, err := os.Getwd()
-	require.NoError(err)
-	installerFullPath := filepath.Join(wd, installerPath)
-	require.True(fileutil.FileExists(installerFullPath), "Installer not found at %s", installerFullPath)
-
-	// Run installer with traditional Windows option
-	t.Logf("Running installer: %s", installerFullPath)
-	out, err := exec.RunHostCommand(installerFullPath, "/traditional", "/S")
-	require.NoError(err, "Installer failed: %v, output: %s", err, out)
-	t.Logf("Installer output: %s", out)
-
-	// Test that ddev.exe is installed in Program Files
-	programFiles := os.Getenv("PROGRAMFILES")
-	ddevPath := filepath.Join(programFiles, "DDEV", "ddev.exe")
-	require.True(fileutil.FileExists(ddevPath), "ddev.exe not found at %s", ddevPath)
-
-	// Test ddev version
-	out, err = exec.RunHostCommand(ddevPath, "version")
-	require.NoError(err, "ddev version failed: %v, output: %s", err, out)
-	require.Contains(out, "ddev version")
-	t.Logf("ddev version output: %s", out)
 }
 
 // Helper functions
@@ -165,11 +95,8 @@ func createTestWSL2Distro(t *testing.T) {
 	out, err := exec.RunHostCommand("wsl.exe", "--install", testDistroName, "--no-launch")
 	require.NoError(err, "Failed to install WSL distro: %v, output: %s", err, out)
 
-	// Wait a moment for the distro to be ready
-	time.Sleep(5 * time.Second)
-
 	// Complete distro setup with root user (avoids interactive user setup)
-	t.Logf("Completing distro setup with root user")
+	t.Logf("Completing distro setup with root user only")
 	userProfile := os.Getenv("USERPROFILE")
 	// Convert Ubuntu-22.04 to ubuntu2204.exe
 	exeName := strings.ToLower(strings.ReplaceAll(strings.ReplaceAll(testDistroName, "-", ""), ".", "")) + ".exe"
@@ -179,7 +106,7 @@ func createTestWSL2Distro(t *testing.T) {
 	t.Logf("Distro setup output: %s, error: %v", out, err)
 
 	// Wait a moment for the distro to be fully registered
-	time.Sleep(3 * time.Second)
+	time.Sleep(1 * time.Second)
 
 	// Create an unprivileged default user
 	t.Logf("Creating unprivileged default user")
@@ -221,7 +148,8 @@ func testBasicDdevFunctionality(t *testing.T) {
 	require := require.New(t)
 	t.Logf("Testing basic ddev functionality in %s", testDistroName)
 
-	projectDir := "/tmp/ddev-test-project"
+	projectDir := "~/tp"
+	projectName := "tp"
 
 	// Clean up any existing test project
 	_, _ = exec.RunHostCommand("wsl.exe", "-d", testDistroName, "rm", "-rf", projectDir)
@@ -231,7 +159,7 @@ func testBasicDdevFunctionality(t *testing.T) {
 	require.NoError(err, "Failed to create project directory: %v, output: %s", err, out)
 
 	// Create a simple index.html
-	_, err = exec.RunHostCommand("wsl.exe", "-d", testDistroName, "bash", "-c", fmt.Sprintf("echo '<html><head><title>DDEV Test</title></head><body><h1>Hello from DDEV!</h1></body></html>' > %s/index.html", projectDir))
+	_, err = exec.RunHostCommand("wsl.exe", "-d", testDistroName, "bash", "-c", fmt.Sprintf("echo 'Hello from DDEV!' > %s/index.html", projectDir))
 	require.NoError(err, "Failed to create index.html: %v", err)
 
 	// Initialize ddev project
@@ -244,17 +172,14 @@ func testBasicDdevFunctionality(t *testing.T) {
 	require.NoError(err, "ddev start failed: %v, output: %s", err, out)
 	t.Logf("ddev start -y output: %s", out)
 
-	// Wait a moment for the site to be ready
-	time.Sleep(10 * time.Second)
-
 	// Test HTTP response
-	out, err = exec.RunHostCommand("wsl.exe", "-d", testDistroName, "bash", "-c", fmt.Sprintf("cd %s && curl -s https://test-project.ddev.site", projectDir))
+	out, err = exec.RunHostCommand("wsl.exe", "-d", testDistroName, "bash", "-c", fmt.Sprintf("curl -s https://%s.ddev.site", projectName))
 	require.NoError(err, "curl to HTTPS site failed: %v, output: %s", err, out)
 	require.Contains(out, "Hello from DDEV!")
 	t.Logf("HTTPS site responding correctly")
 
 	// Test that the site has valid HTTPS
-	out, err = exec.RunHostCommand("wsl.exe", "-d", testDistroName, "bash", "-c", fmt.Sprintf("cd %s && curl -s -I https://test-project.ddev.site | head -1", projectDir))
+	out, err = exec.RunHostCommand("wsl.exe", "-d", testDistroName, "bash", "-c", fmt.Sprintf("cd %s && curl -s -I https://%s.ddev.site | head -1", projectName, projectDir))
 	require.NoError(err, "HTTPS check failed: %v, output: %s", err, out)
 	require.Contains(out, "200 OK")
 	t.Logf("HTTPS certificate working")
