@@ -919,7 +919,15 @@ FunctionEnd
 
 Function RunMkcertInstall
     ${If} ${Silent}
-        DetailPrint "Skipping mkcert setup in silent mode to avoid UAC prompts"
+        ; In silent mode, skip mkcert.exe -install to avoid UAC prompts
+        ; But still set up CAROOT environment variable for WSL2 installs
+        ${If} $INSTALL_OPTION == "wsl2-docker-ce"
+        ${OrIf} $INSTALL_OPTION == "wsl2-docker-desktop"
+            DetailPrint "Setting up CAROOT environment variable for WSL2 in silent mode..."
+            Call SetupWindowsCAROOT
+        ${Else}
+            DetailPrint "Skipping mkcert setup in silent mode for traditional Windows install"
+        ${EndIf}
         Return
     ${EndIf}
     
