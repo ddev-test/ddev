@@ -918,10 +918,13 @@ Function InstallTraditionalWindows
 FunctionEnd
 
 Function RunMkcertInstall
-    DetailPrint "Setting up mkcert.exe (Windows) for trusted HTTPS certificates..."
-    ${IfNot} ${Silent}
-        MessageBox MB_ICONINFORMATION|MB_OK "Now setting up mkcert.exe to enable trusted https. Please accept the mkcert dialog box that may follow."
+    ${If} ${Silent}
+        DetailPrint "Skipping mkcert setup in silent mode to avoid UAC prompts"
+        Return
     ${EndIf}
+    
+    DetailPrint "Setting up mkcert.exe (Windows) for trusted HTTPS certificates..."
+    MessageBox MB_ICONINFORMATION|MB_OK "Now setting up mkcert.exe to enable trusted https. Please accept the mkcert dialog box that may follow."
     
     ; Unset CAROOT environment variable in current process
     System::Call 'kernel32::SetEnvironmentVariable(t "CAROOT", i 0)'
@@ -1197,8 +1200,10 @@ Function ParseCommandLine
     
     ; If any install type was specified via command line, enable silent mode
     ${If} $SILENT_INSTALL_TYPE != ""
-        SetSilent silent
-        DetailPrint "Command line install type detected, enabling silent mode"
+        ${IfNot} ${Silent}
+            SetSilent silent
+            DetailPrint "Command line install type detected, enabling silent mode"
+        ${EndIf}
     ${EndIf}
 FunctionEnd
 

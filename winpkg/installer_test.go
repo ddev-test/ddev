@@ -48,6 +48,14 @@ func TestWindowsInstallerWSL2DockerCE(t *testing.T) {
 	require.NoError(err, "Installer failed: %v, output: %s", err, out)
 	t.Logf("Installer output: %s", out)
 
+	// Immediately check if ddev is available to verify installer waited for completion
+	out, err = exec.RunHostCommand("wsl.exe", "-d", testDistroName, "bash", "-c", "ddev version")
+	if err != nil {
+		t.Logf("DDEV not immediately available after installer - installer may not be waiting: %v, output: %s", err, out)
+	} else {
+		t.Logf("DDEV immediately available after installer - installer properly waited for completion")
+	}
+
 	// Test that ddev is installed and working
 	testDdevInstallation(t)
 
@@ -151,7 +159,7 @@ func createTestWSL2Distro(t *testing.T) {
 	_, err = exec.RunHostCommand("wsl.exe", "--manage", testDistroName, "--set-default-user", "testuser")
 	require.NoError(err, "Failed to set default user: %v", err)
 
-	t.Logf("Test WSL2 distro %s created successfully", testDistroName)
+	t.Logf("Test WSL2 distro %s set up successfully", testDistroName)
 }
 
 // testDdevInstallation verifies that ddev is properly installed in WSL2
