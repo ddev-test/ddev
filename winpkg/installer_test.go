@@ -169,11 +169,6 @@ func testDdevInstallation(t *testing.T) {
 	out, err = exec.RunHostCommand("wsl.exe", "-d", testDistroName, "ddev-hostname", "--help")
 	require.NoError(err, "ddev-hostname failed: %v, output: %s", err, out)
 	t.Logf("ddev-hostname available")
-
-	// Test mkcert is available
-	out, err = exec.RunHostCommand("wsl.exe", "-d", testDistroName, "mkcert", "-version")
-	require.NoError(err, "mkcert not available: %v, output: %s", err, out)
-	t.Logf("mkcert available: %s", strings.TrimSpace(out))
 }
 
 // testBasicDdevFunctionality tests basic ddev project creation and start

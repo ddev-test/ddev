@@ -1326,16 +1326,20 @@ Function un.CleanupMkcertEnvironment
     ${IfNot} ${Errors}
         DetailPrint "CAROOT directory: $R0"
         
-        ; Run mkcert -uninstall first to properly clean up certificates
+        ; Run mkcert -uninstall first to properly clean up certificates (skip in silent mode)
         ${If} ${FileExists} "$INSTDIR\mkcert.exe"
-            DetailPrint "Running mkcert -uninstall to clean up certificates..."
-            nsExec::ExecToStack '"$INSTDIR\mkcert.exe" -uninstall'
-            Pop $R1
-            Pop $R2 ; get output
-            ${If} $R1 = 0
-                DetailPrint "mkcert -uninstall completed successfully"
+            ${IfNot} ${Silent}
+                DetailPrint "Running mkcert -uninstall to clean up certificates..."
+                nsExec::ExecToStack '"$INSTDIR\mkcert.exe" -uninstall'
+                Pop $R1
+                Pop $R2 ; get output
+                ${If} $R1 = 0
+                    DetailPrint "mkcert -uninstall completed successfully"
+                ${Else}
+                    DetailPrint "mkcert -uninstall failed with exit code: $R1"
+                ${EndIf}
             ${Else}
-                DetailPrint "mkcert -uninstall failed with exit code: $R1"
+                DetailPrint "Skipping mkcert -uninstall in silent mode to avoid UAC prompts"
             ${EndIf}
         ${EndIf}
         
