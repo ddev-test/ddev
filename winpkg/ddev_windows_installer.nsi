@@ -5,11 +5,13 @@
 !include "Sections.nsh"
 !include "x64.nsh"
 !include "WordFunc.nsh"
+!include "StrFunc.nsh"
 
 !insertmacro GetParameters
 !insertmacro GetOptions
 
 !insertmacro WordFind
+${StrStr}
 ; Remove the Trim macro since we're using our own TrimWhitespace function
 
 !ifndef TARGET_ARCH # passed on command-line
@@ -259,6 +261,9 @@ Page custom InstallChoicePage InstallChoicePageLeave
 ; Add WSL2 distro selection page
 Page custom DistroSelectionPage DistroSelectionPageLeave
 
+; Git for Windows check page for traditional installation
+Page custom GitCheckPage GitCheckPageLeave
+
 ; Directory page
 !define MUI_DIRECTORYPAGE_TEXT_TOP "DDEV Windows-side components will be installed in this folder."
 !define MUI_DIRECTORYPAGE_TEXT_DESTINATION "Windows install folder:"
@@ -332,6 +337,82 @@ Function InstallChoicePageLeave
   ${NSD_GetState} $4 $0
   StrCmp $0 ${BST_CHECKED} 0 +2
     StrCpy $INSTALL_OPTION "traditional"
+FunctionEnd
+
+Function GitCheckPage
+    DetailPrint "Starting GitCheckPage..."
+    ; Skip this page if not traditional Windows installation
+    ${If} $INSTALL_OPTION != "traditional"
+        DetailPrint "Skipping Git check for non-traditional install: $INSTALL_OPTION"
+        Abort
+    ${EndIf}
+
+    ; Skip this page if install type was specified via command line
+    ${If} $SILENT_INSTALL_TYPE != ""
+        DetailPrint "Skipping Git check page for command line install"
+        Abort
+    ${EndIf}
+
+    ; Check for Git for Windows
+    DetailPrint "Checking for Git for Windows before proceeding..."
+    Call CheckGitForWindows
+    Pop $R0
+    ${If} $R0 == "1"
+        DetailPrint "Git for Windows found, proceeding with installation"
+        Abort ; Skip this page since Git is already installed
+    ${EndIf}
+
+    ; Git not found - show page to inform user
+    DetailPrint "Git for Windows not found, showing information page"
+    nsDialogs::Create 1018
+    Pop $0
+    ${If} $0 == error
+        DetailPrint "Failed to create Git check dialog"
+        Abort
+    ${EndIf}
+
+    ${NSD_CreateLabel} 0 0 100% 48u "Git for Windows is required for traditional Windows installation but was not found.$\r$\n$\r$\nGit for Windows provides both Git and a Bash shell that DDEV needs to function properly.$\r$\n$\r$\nYou can install it now or cancel this installation."
+    Pop $1
+
+    ${NSD_CreateButton} 10 60u 120u 24u "Install Git for Windows"
+    Pop $2
+    ${NSD_OnClick} $2 GitInstallButtonClick
+
+    ${NSD_CreateButton} 140u 60u 80u 24u "Cancel Installation"
+    Pop $3
+    ${NSD_OnClick} $3 GitCancelButtonClick
+
+    nsDialogs::Show
+FunctionEnd
+
+Function GitCheckPageLeave
+    ; This function is called when leaving the Git check page normally
+    ; Check if Git was installed while on this page
+    Call CheckGitForWindows
+    Pop $R0
+    ${If} $R0 == "1"
+        DetailPrint "Git for Windows now detected, continuing installation"
+        Return
+    ${EndIf}
+    
+    ; If we get here, Git is still not found but user somehow left the page
+    ; This shouldn't normally happen with our button handlers
+    DetailPrint "Leaving Git check page without Git installed"
+FunctionEnd
+
+Function GitInstallButtonClick
+    DetailPrint "User clicked Install Git for Windows button"
+    ExecShell "open" "https://gitforwindows.org/"
+    MessageBox MB_ICONINFORMATION|MB_OK "Git for Windows download page opened in your browser.$\n$\nPlease download and install Git for Windows, then restart this installer.$\n$\nThe installer will now exit."
+    DetailPrint "Exiting installer so user can install Git for Windows"
+    SendMessage $HWNDPARENT ${WM_CLOSE} 0 0
+FunctionEnd
+
+Function GitCancelButtonClick
+    DetailPrint "User clicked Cancel Installation button"
+    MessageBox MB_ICONINFORMATION|MB_OK "Installation cancelled.$\n$\nGit for Windows is required for traditional Windows installation.$\n$\nThe installer will now exit."
+    DetailPrint "Exiting installer - user cancelled Git installation"
+    SendMessage $HWNDPARENT ${WM_CLOSE} 0 0
 FunctionEnd
 
 Function StartMenuPagePre
@@ -862,6 +943,75 @@ Function InstallWSL2Common
     DetailPrint "All done! Installation completed successfully and validated."
     ${IfNot} ${Silent}
         MessageBox MB_ICONINFORMATION|MB_OK "DDEV WSL2 installation completed successfully."
+    ${EndIf}
+FunctionEnd
+
+Function CheckGitForWindows
+    DetailPrint "Checking for Git for Windows..."
+    
+    ; Check if Git for Windows is installed in the standard location
+    ${If} ${FileExists} "$PROGRAMFILES64\Git\bin\git.exe"
+        ${If} ${FileExists} "$PROGRAMFILES64\Git\bin\bash.exe"
+            DetailPrint "Git for Windows found in Program Files"
+            ; Verify it's working by checking version
+            nsExec::ExecToStack '"$PROGRAMFILES64\Git\bin\git.exe" --version'
+            Pop $R0
+            Pop $R1
+            ${If} $R0 == 0
+                DetailPrint "Git version check successful: $R1"
+                ; Check if it contains "windows" to confirm it's Git for Windows
+                ${StrStr} $R2 $R1 "windows"
+                ${If} $R2 != ""
+                    DetailPrint "Confirmed Git for Windows installation"
+                    Push "1"
+                    Return
+                ${EndIf}
+            ${EndIf}
+        ${EndIf}
+    ${EndIf}
+    
+    ; Also check if git and bash are available in PATH
+    nsExec::ExecToStack 'git --version'
+    Pop $R0
+    Pop $R1
+    ${If} $R0 == 0
+        ${StrStr} $R2 $R1 "windows"
+        ${If} $R2 != ""
+            ; Check if bash is also available
+            nsExec::ExecToStack 'bash --version'
+            Pop $R3
+            Pop $R4
+            ${If} $R3 == 0
+                DetailPrint "Git for Windows found in PATH: $R1"
+                Push "1"
+                Return
+            ${EndIf}
+        ${EndIf}
+    ${EndIf}
+    
+    DetailPrint "Git for Windows not found"
+    Push "0"
+FunctionEnd
+
+Function OfferGitForWindowsInstall
+    ${IfNot} ${Silent}
+        MessageBox MB_ICONQUESTION|MB_YESNO "Git for Windows is required for traditional Windows installation but was not found.$\n$\nGit for Windows provides both Git and a Bash shell that DDEV needs to function properly.$\n$\nWould you like to download and install Git for Windows now?" IDYES InstallGit IDNO SkipGit
+        
+        InstallGit:
+            DetailPrint "User chose to install Git for Windows"
+            MessageBox MB_ICONINFORMATION|MB_OK "Opening Git for Windows download page. Please download and install Git for Windows, then restart this installer."
+            ExecShell "open" "https://gitforwindows.org/"
+            Push "Git for Windows installation required. Please install Git for Windows and restart this installer."
+            Call ShowErrorAndAbort
+            
+        SkipGit:
+            DetailPrint "User chose to skip Git for Windows installation"
+            Push "Git for Windows is required for traditional Windows installation. Please install Git for Windows and restart this installer."
+            Call ShowErrorAndAbort
+    ${Else}
+        DetailPrint "Silent install mode - cannot prompt for Git for Windows installation"
+        Push "Git for Windows is required for traditional Windows installation but was not found. Please install Git for Windows and restart this installer."
+        Call ShowErrorAndAbort
     ${EndIf}
 FunctionEnd
 
