@@ -1611,42 +1611,51 @@ Function un.CleanupMkcertEnvironment
         ${EndIf}
     ${EndIf}
     
-    ; Remove CAROOT environment variable
-    DeleteRegValue HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "CAROOT"
-    
-    ; Clean up WSLENV by removing CAROOT/up
-    ReadRegStr $R0 HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "WSLENV"
-    ${If} ${Errors}
-        DetailPrint "WSLENV not found, nothing to clean up"
-        Return
+    ; Remove CAROOT environment variable (skip in silent mode to preserve for subsequent installs)
+    ${IfNot} ${Silent}
+        DeleteRegValue HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "CAROOT"
+        DetailPrint "Removed CAROOT environment variable"
+    ${Else}
+        DetailPrint "Preserving CAROOT environment variable in silent mode"
     ${EndIf}
     
-    DetailPrint "Current WSLENV: $R0"
-    
-    ; Remove CAROOT/up: from the beginning
-    ${WordFind} "$R0" "CAROOT/up:" "E+1{" $R1
-    ${If} $R1 != $R0
-        StrCpy $R0 $R1
-    ${Else}
-        ; Remove :CAROOT/up from anywhere else
-        ${WordFind} "$R0" ":CAROOT/up" "E+1{" $R1
+    ; Clean up WSLENV by removing CAROOT/up (skip in silent mode to preserve for subsequent installs)
+    ${IfNot} ${Silent}
+        ReadRegStr $R0 HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "WSLENV"
+        ${If} ${Errors}
+            DetailPrint "WSLENV not found, nothing to clean up"
+            Return
+        ${EndIf}
+        
+        DetailPrint "Current WSLENV: $R0"
+        
+        ; Remove CAROOT/up: from the beginning
+        ${WordFind} "$R0" "CAROOT/up:" "E+1{" $R1
         ${If} $R1 != $R0
             StrCpy $R0 $R1
         ${Else}
-            ; Check if it's just CAROOT/up by itself
-            ${If} $R0 == "CAROOT/up"
-                StrCpy $R0 ""
+            ; Remove :CAROOT/up from anywhere else
+            ${WordFind} "$R0" ":CAROOT/up" "E+1{" $R1
+            ${If} $R1 != $R0
+                StrCpy $R0 $R1
+            ${Else}
+                ; Check if it's just CAROOT/up by itself
+                ${If} $R0 == "CAROOT/up"
+                    StrCpy $R0 ""
+                ${EndIf}
             ${EndIf}
         ${EndIf}
-    ${EndIf}
-    
-    ; Update or delete WSLENV
-    ${If} $R0 == ""
-        DeleteRegValue HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "WSLENV"
-        DetailPrint "Removed empty WSLENV"
+        
+        ; Update or delete WSLENV
+        ${If} $R0 == ""
+            DeleteRegValue HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "WSLENV"
+            DetailPrint "Removed empty WSLENV"
+        ${Else}
+            WriteRegStr HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "WSLENV" "$R0"
+            DetailPrint "Updated WSLENV to: $R0"
+        ${EndIf}
     ${Else}
-        WriteRegStr HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "WSLENV" "$R0"
-        DetailPrint "Updated WSLENV to: $R0"
+        DetailPrint "Preserving WSLENV environment variable in silent mode"
     ${EndIf}
     
     DetailPrint "mkcert environment variables cleanup completed"

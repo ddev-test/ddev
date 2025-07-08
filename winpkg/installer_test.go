@@ -307,7 +307,7 @@ func testBasicDdevFunctionality(t *testing.T, distroName string) {
 	out, err = exec.RunHostCommand("wsl.exe", "-d", distroName, "bash", "-c", fmt.Sprintf("curl -s https://%s.ddev.site", projectName))
 	require.NoError(err, "curl to HTTPS site failed: %v, output: %s", err, out)
 	require.Contains(out, "Hello from DDEV!")
-	t.Logf("HTTPS site responding correctly")
+	t.Logf("HTTPS site responding correctly inside distro")
 
 	// Test using windows PowerShell to check HTTPS
 	out, err = exec.RunHostCommand("powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", fmt.Sprintf("Invoke-RestMethod 'https://%s.ddev.site' -ErrorAction Stop", projectName))
