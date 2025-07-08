@@ -264,6 +264,9 @@ Page custom DistroSelectionPage DistroSelectionPageLeave
 ; Git for Windows check page for traditional installation
 Page custom GitCheckPage GitCheckPageLeave
 
+; Docker provider check page for all installations
+Page custom DockerCheckPage DockerCheckPageLeave
+
 ; Directory page
 !define MUI_DIRECTORYPAGE_TEXT_TOP "DDEV Windows-side components will be installed in this folder."
 !define MUI_DIRECTORYPAGE_TEXT_DESTINATION "Windows install folder:"
@@ -412,6 +415,124 @@ Function GitCancelButtonClick
     DetailPrint "User clicked Cancel Installation button"
     MessageBox MB_ICONINFORMATION|MB_OK "Installation cancelled.$\n$\nGit for Windows is required for traditional Windows installation.$\n$\nThe installer will now exit."
     DetailPrint "Exiting installer - user cancelled Git installation"
+    SendMessage $HWNDPARENT ${WM_CLOSE} 0 0
+FunctionEnd
+
+Function CheckDockerProvider
+    DetailPrint "Checking for Docker provider..."
+    
+    ${If} $INSTALL_OPTION == "wsl2-docker-desktop"
+        ; Check if Docker is accessible in WSL2
+        DetailPrint "Checking Docker Desktop connectivity in WSL2..."
+        nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO docker ps'
+        Pop $R0
+        Pop $R1
+        ${If} $R0 == 0
+            DetailPrint "Docker provider found in WSL2: $R1"
+            Push "1"
+            Return
+        ${Else}
+            DetailPrint "Docker provider not accessible in WSL2: $R1"
+            Push "0"
+            Return
+        ${EndIf}
+    ${Else}
+        ; Check if Docker is accessible on Windows (traditional or WSL2 Docker CE setup)
+        DetailPrint "Checking Docker provider on Windows..."
+        nsExec::ExecToStack 'docker ps'
+        Pop $R0
+        Pop $R1
+        ${If} $R0 == 0
+            DetailPrint "Docker provider found on Windows: $R1"
+            Push "1"
+            Return
+        ${Else}
+            DetailPrint "Docker provider not accessible on Windows: $R1"
+            Push "0"
+            Return
+        ${EndIf}
+    ${EndIf}
+FunctionEnd
+
+Function DockerCheckPage
+    DetailPrint "Starting DockerCheckPage..."
+    
+    ; Skip this page if install type was specified via command line
+    ${If} $SILENT_INSTALL_TYPE != ""
+        DetailPrint "Skipping Docker check page for command line install"
+        Abort
+    ${EndIf}
+
+    ; Check for Docker provider
+    DetailPrint "Checking for Docker provider before proceeding..."
+    Call CheckDockerProvider
+    Pop $R0
+    ${If} $R0 == "1"
+        DetailPrint "Docker provider found, proceeding with installation"
+        Abort ; Skip this page since Docker is already working
+    ${EndIf}
+
+    ; Docker not found - show page to inform user
+    DetailPrint "Docker provider not found, showing information page"
+    nsDialogs::Create 1018
+    Pop $0
+    ${If} $0 == error
+        DetailPrint "Failed to create Docker check dialog"
+        Abort
+    ${EndIf}
+
+    ; Create different messages based on installation type
+    ${If} $INSTALL_OPTION == "traditional"
+        ${NSD_CreateLabel} 0 0 100% 60u "Docker provider is required for traditional Windows installation but was not found or is not running.$\r$\n$\r$\nPlease install and start Docker Desktop (https://www.docker.com/products/docker-desktop/) or Rancher Desktop (https://rancherdesktop.io/) before installing DDEV.$\r$\n$\r$\nYou can exit now to install Docker, or cancel this installation."
+    ${ElseIf} $INSTALL_OPTION == "wsl2-docker-desktop"
+        ${NSD_CreateLabel} 0 0 100% 60u "Docker Desktop or Rancher Desktop is required for this installation but is not accessible in WSL2.$\r$\n$\r$\nPlease install Docker Desktop or Rancher Desktop and enable WSL2 integration for the '$SELECTED_DISTRO' distro.$\r$\n$\r$\nYou can exit now to configure Docker, or cancel this installation."
+    ${Else}
+        ${NSD_CreateLabel} 0 0 100% 60u "Docker provider is required but was not found or is not running.$\r$\n$\r$\nPlease install and start a Docker provider before installing DDEV.$\r$\n$\r$\nYou can exit now to install Docker, or cancel this installation."
+    ${EndIf}
+    Pop $1
+
+    ${NSD_CreateButton} 10 75u 120u 24u "Exit to Install Docker"
+    Pop $2
+    ${NSD_OnClick} $2 DockerExitButtonClick
+
+    ${NSD_CreateButton} 140u 75u 80u 24u "Cancel Installation"
+    Pop $3
+    ${NSD_OnClick} $3 DockerCancelButtonClick
+
+    nsDialogs::Show
+FunctionEnd
+
+Function DockerCheckPageLeave
+    ; This function is called when leaving the Docker check page normally
+    ; Check if Docker was configured while on this page
+    Call CheckDockerProvider
+    Pop $R0
+    ${If} $R0 == "1"
+        DetailPrint "Docker provider now detected, continuing installation"
+        Return
+    ${EndIf}
+    
+    ; If we get here, Docker is still not found but user somehow left the page
+    DetailPrint "Leaving Docker check page without Docker provider"
+FunctionEnd
+
+Function DockerExitButtonClick
+    DetailPrint "User clicked Exit to Install Docker button"
+    ${If} $INSTALL_OPTION == "traditional"
+        MessageBox MB_ICONINFORMATION|MB_OK "Please install Docker Desktop or Rancher Desktop, ensure it's running, then restart this installer.$\n$\nThe installer will now exit."
+    ${ElseIf} $INSTALL_OPTION == "wsl2-docker-desktop"
+        MessageBox MB_ICONINFORMATION|MB_OK "Please ensure Docker Desktop or Rancher Desktop is running and has WSL2 integration enabled for '$SELECTED_DISTRO', then restart this installer.$\n$\nThe installer will now exit."
+    ${Else}
+        MessageBox MB_ICONINFORMATION|MB_OK "Please install and configure a Docker provider, then restart this installer.$\n$\nThe installer will now exit."
+    ${EndIf}
+    DetailPrint "Exiting installer so user can install/configure Docker"
+    SendMessage $HWNDPARENT ${WM_CLOSE} 0 0
+FunctionEnd
+
+Function DockerCancelButtonClick
+    DetailPrint "User clicked Cancel Installation button"
+    MessageBox MB_ICONINFORMATION|MB_OK "Installation cancelled.$\n$\nA Docker provider is required for DDEV installation.$\n$\nThe installer will now exit."
+    DetailPrint "Exiting installer - user cancelled Docker installation"
     SendMessage $HWNDPARENT ${WM_CLOSE} 0 0
 FunctionEnd
 
@@ -692,18 +813,7 @@ Function InstallWSL2CommonSetup
     DetailPrint "Non-root user detected successfully."
 
     ${If} $INSTALL_OPTION == "wsl2-docker-desktop"
-        ; Check if Docker is already working in WSL2
-        DetailPrint "Checking Docker Desktop connectivity..."
-        nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO docker ps'
-        Pop $1
-        Pop $0
-        ${If} $1 != 0
-            DetailPrint "ERROR: Docker Desktop/Rancher Desktop not accessible in WSL2 - exit code: $1, output: $0"
-            Push "Docker provider is not working in WSL2. Please ensure Docker Desktop, Rancher Desktop, or another provider is running and integration with the $SELECTED_DISTRO distro is enabled."
-            Call ShowErrorAndAbort
-        ${EndIf}
-
-        ; Make sure we're not running docker-ce or docker.io daemon
+        ; Make sure we're not running docker-ce or docker.io daemon (conflicts with Docker Desktop)
         DetailPrint "Verifying Docker installation type..."
         nsExec::ExecToStack 'wsl -d $SELECTED_DISTRO pgrep dockerd'
         Pop $1
@@ -1017,18 +1127,6 @@ FunctionEnd
 
 Function InstallTraditionalWindows
     DetailPrint "Starting InstallTraditionalWindows"
-
-    ; Check for Docker provider on Windows
-    DetailPrint "Checking for Docker provider on Windows..."
-    nsExec::ExecToStack 'docker ps'
-    Pop $1
-    Pop $0
-    ${If} $1 != 0
-        DetailPrint "ERROR: Docker provider check failed - exit code: $1, output: $0"
-        Push "Docker provider not found or not working on Windows.$\n$\nTraditional Windows installation requires a working Docker provider like Docker Desktop or Rancher Desktop.$\n$\nPlease install Docker Desktop (https://www.docker.com/products/docker-desktop/) or Rancher Desktop (https://rancherdesktop.io/) and make sure it's running before installing DDEV."
-        Call ShowErrorAndAbort
-    ${EndIf}
-    DetailPrint "Docker provider check successful."
 
     ; Remove CAROOT environment variable for traditional Windows (WSL2-specific)
     DetailPrint "Removing CAROOT environment variable (not needed for traditional Windows)"
