@@ -107,37 +107,46 @@ jobs:
       - name: Install WSL2 distribution as testuser
         shell: pwsh
         run: |
-          # WSL distros are per-user, so install as testuser via PsExec
+          # WSL distros are per-user, so install as testuser via PsExec.
+          # Run wsl.exe directly (not through cmd /c) to avoid quoting issues.
+          $wsl = "C:\Windows\System32\wsl.exe"
           Write-Host "Setting WSL default version to 2"
           wsl --set-default-version 2
           Write-Host "Installing DDEV Ubuntu distro as testuser"
-          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" cmd /c "wsl --install --name DDEV --no-launch"
-          if ($LASTEXITCODE -ne 0) {
-            Write-Error "WSL install failed with exit code $LASTEXITCODE"
-            exit $LASTEXITCODE
-          }
-          # Configure the distro (create linux testuser, enable systemd, set default user)
-          # This needs to run as the Windows testuser who owns the distro
-          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" cmd /c "wsl -d DDEV --user root bash -c ""useradd -m -s /bin/bash testuser && echo 'testuser:password' | chpasswd && usermod -aG sudo testuser && printf '[boot]\nsystemd=true\n\n[user]\ndefault=testuser\n' > /etc/wsl.conf"""
-          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" cmd /c "wsl --set-default DDEV"
+          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" $wsl --install --name DDEV --no-launch
+          # Write the distro setup commands to a script to avoid nested quoting
+          $script = @'
+          #!/usr/bin/env bash
+          set -eu -o pipefail
+          set -x
+          useradd -m -s /bin/bash testuser
+          echo 'testuser:password' | chpasswd
+          usermod -aG sudo testuser
+          printf '[boot]\nsystemd=true\n\n[user]\ndefault=testuser\n' > /etc/wsl.conf
+          '@
+          $script = $script -replace "`r`n", "`n"
+          [System.IO.File]::WriteAllText("C:\ddev-ci-tmp\setup-wsl-distro.sh", $script)
+          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" $wsl -d DDEV --user root bash -e /mnt/c/ddev-ci-tmp/setup-wsl-distro.sh
+          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" $wsl --set-default DDEV
           Write-Host "Verifying WSL installation"
-          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" cmd /c "wsl --list --verbose"
+          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" $wsl --list --verbose
 
       - name: Restart WSL to enable systemd
         shell: pwsh
         run: |
+          $wsl = "C:\Windows\System32\wsl.exe"
           Write-Host "Shutting down WSL so systemd and default user take effect"
-          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" cmd /c "wsl --shutdown"
+          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" $wsl --shutdown
           Start-Sleep -Seconds 5
           Write-Host "Verifying WSL comes back with correct user"
-          $output = PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" cmd /c "wsl whoami" 2>&1
-          Write-Host "WSL whoami output: $output"
-          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" cmd /c "wsl -- uname -a"
-          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" cmd /c "wsl -- systemctl is-system-running --wait"
+          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" $wsl whoami
+          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" $wsl -- uname -a
+          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" $wsl -- systemctl is-system-running --wait
 
       - name: Install Docker CLI in WSL2
         shell: pwsh
         run: |
+          $wsl = "C:\Windows\System32\wsl.exe"
           # Write script with Unix line endings to avoid \r issues when pwsh passes to WSL
           $script = @'
           #!/usr/bin/env bash
@@ -156,11 +165,10 @@ jobs:
           echo "Docker CLI installed:"
           docker --version
           '@
-          # Write with explicit Unix line endings
           $script = $script -replace "`r`n", "`n"
           [System.IO.File]::WriteAllText("C:\ddev-ci-tmp\install-docker-cli.sh", $script)
           # Run as testuser who owns the WSL distro, but use root inside WSL for apt
-          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" cmd /c "wsl -u root -- bash -e /mnt/c/ddev-ci-tmp/install-docker-cli.sh"
+          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" $wsl -u root -- bash -e /mnt/c/ddev-ci-tmp/install-docker-cli.sh
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Expose Docker to WSL2 via TCP
@@ -213,6 +221,7 @@ jobs:
       - name: Configure WSL2 Docker access and verify
         shell: pwsh
         run: |
+          $wsl = "C:\Windows\System32\wsl.exe"
           # Set DOCKER_HOST in testuser's profile so docker CLI in WSL2 connects
           # to the Windows host's dockerd over TCP.
           # With WSL2 NAT networking, the Windows host is reachable via the default gateway.
@@ -233,7 +242,7 @@ jobs:
           '@
           $script = $script -replace "`r`n", "`n"
           [System.IO.File]::WriteAllText("C:\ddev-ci-tmp\configure-docker-wsl.sh", $script)
-          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" cmd /c "wsl -u root -- bash -e /mnt/c/ddev-ci-tmp/configure-docker-wsl.sh"
+          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" $wsl -u root -- bash -e /mnt/c/ddev-ci-tmp/configure-docker-wsl.sh
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Checkout code
