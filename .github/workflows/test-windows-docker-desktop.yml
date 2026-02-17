@@ -324,8 +324,9 @@ jobs:
       - name: Build DDEV as testuser
         shell: pwsh
         run: |
-          $goRoot = (go env GOROOT)
-          $workspace = "${{ github.workspace }}"
+          # Convert Windows backslash paths to forward slashes for bash
+          $goRoot = (go env GOROOT) -replace '\\', '/'
+          $workspace = "${{ github.workspace }}" -replace '\\', '/'
           # Write a build script to avoid PsExec/bash quoting issues
           $buildScript = @"
           #!/usr/bin/env bash
