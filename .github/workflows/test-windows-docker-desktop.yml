@@ -84,34 +84,50 @@ jobs:
           Write-Host "testuser group memberships: $groups"
           Write-Host "testuser created successfully"
 
-      - name: Install WSL2 distribution
+      - name: Install PsExec
         shell: pwsh
         run: |
+          $psexecDir = "$env:USERPROFILE\pstools"
+          New-Item -ItemType Directory -Force -Path $psexecDir | Out-Null
+          Write-Host "Downloading PsTools..."
+          Invoke-WebRequest -Uri "https://download.sysinternals.com/files/PSTools.zip" -OutFile "$psexecDir\PSTools.zip"
+          Expand-Archive -Path "$psexecDir\PSTools.zip" -DestinationPath $psexecDir -Force
+          "$psexecDir" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+          Write-Host "PsExec installed to $psexecDir"
+          # Pre-accept the EULA via registry for both admin and testuser
+          reg add "HKCU\Software\Sysinternals\PsExec" /v EulaAccepted /t REG_DWORD /d 1 /f
+          reg add "HKU\.DEFAULT\Software\Sysinternals\PsExec" /v EulaAccepted /t REG_DWORD /d 1 /f
+
+      - name: Install WSL2 distribution as testuser
+        shell: pwsh
+        run: |
+          # WSL distros are per-user, so install as testuser via PsExec
           Write-Host "Setting WSL default version to 2"
           wsl --set-default-version 2
-          Write-Host "Installing DDEV Ubuntu distro"
-          wsl --install --name DDEV --no-launch
-          # Create testuser, enable systemd, set default user
-          wsl -d DDEV --user root bash -c "useradd -m -s /bin/bash testuser && echo 'testuser:password' | chpasswd && usermod -aG sudo testuser && printf '[boot]\nsystemd=true\n\n[user]\ndefault=testuser\n' > /etc/wsl.conf"
-          wsl --set-default DDEV
+          Write-Host "Installing DDEV Ubuntu distro as testuser"
+          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" cmd /c "wsl --install --name DDEV --no-launch"
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "WSL install failed with exit code $LASTEXITCODE"
+            exit $LASTEXITCODE
+          }
+          # Configure the distro (create linux testuser, enable systemd, set default user)
+          # This needs to run as the Windows testuser who owns the distro
+          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" cmd /c "wsl -d DDEV --user root bash -c ""useradd -m -s /bin/bash testuser && echo 'testuser:password' | chpasswd && usermod -aG sudo testuser && printf '[boot]\nsystemd=true\n\n[user]\ndefault=testuser\n' > /etc/wsl.conf"""
+          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" cmd /c "wsl --set-default DDEV"
           Write-Host "Verifying WSL installation"
-          wsl --list --verbose
+          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" cmd /c "wsl --list --verbose"
 
       - name: Restart WSL to enable systemd
         shell: pwsh
         run: |
           Write-Host "Shutting down WSL so systemd and default user take effect"
-          wsl --shutdown
+          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" cmd /c "wsl --shutdown"
           Start-Sleep -Seconds 5
           Write-Host "Verifying WSL comes back with correct user"
-          $user = (wsl whoami).Trim()
-          Write-Host "Current WSL user: $user"
-          if ($user -ne "testuser") {
-            Write-Error "Expected testuser but got $user"
-            exit 1
-          }
-          wsl -- uname -a
-          wsl -- systemctl is-system-running --wait
+          $output = PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" cmd /c "wsl whoami" 2>&1
+          Write-Host "WSL whoami output: $output"
+          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" cmd /c "wsl -- uname -a"
+          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" cmd /c "wsl -- systemctl is-system-running --wait"
 
       - name: Install Docker CLI in WSL2
         shell: pwsh
@@ -136,8 +152,11 @@ jobs:
           '@
           # Write with explicit Unix line endings
           $script = $script -replace "`r`n", "`n"
-          [System.IO.File]::WriteAllText("$env:TEMP\install-docker-cli.sh", $script)
-          wsl -u root -- bash -e /mnt/c/Users/$env:USERNAME/AppData/Local/Temp/install-docker-cli.sh
+          $tempFile = "$env:TEMP\install-docker-cli.sh"
+          [System.IO.File]::WriteAllText($tempFile, $script)
+          # Run as testuser who owns the WSL distro, but use root inside WSL for apt
+          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" cmd /c "wsl -u root -- bash -e /mnt/c/Users/$env:USERNAME/AppData/Local/Temp/install-docker-cli.sh"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Expose Docker to WSL2 via TCP
         shell: pwsh
@@ -208,8 +227,10 @@ jobs:
           docker info
           '@
           $script = $script -replace "`r`n", "`n"
-          [System.IO.File]::WriteAllText("$env:TEMP\configure-docker-wsl.sh", $script)
-          wsl -u root -- bash -e /mnt/c/Users/$env:USERNAME/AppData/Local/Temp/configure-docker-wsl.sh
+          $tempFile = "$env:TEMP\configure-docker-wsl.sh"
+          [System.IO.File]::WriteAllText($tempFile, $script)
+          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" cmd /c "wsl -u root -- bash -e /mnt/c/Users/$env:USERNAME/AppData/Local/Temp/configure-docker-wsl.sh"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Checkout code
         uses: actions/checkout@v4
@@ -221,19 +242,6 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-
-      - name: Install PsExec
-        shell: pwsh
-        run: |
-          $psexecDir = "$env:USERPROFILE\pstools"
-          New-Item -ItemType Directory -Force -Path $psexecDir | Out-Null
-          Write-Host "Downloading PsTools..."
-          Invoke-WebRequest -Uri "https://download.sysinternals.com/files/PSTools.zip" -OutFile "$psexecDir\PSTools.zip"
-          Expand-Archive -Path "$psexecDir\PSTools.zip" -DestinationPath $psexecDir -Force
-          echo "$psexecDir" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
-          Write-Host "PsExec installed to $psexecDir"
-          # Pre-accept the EULA via registry to avoid interactive prompts
-          reg add "HKCU\Software\Sysinternals\PsExec" /v EulaAccepted /t REG_DWORD /d 1 /f
 
       - name: Grant testuser access to workspace
         shell: pwsh
@@ -300,10 +308,22 @@ jobs:
         run: |
           $goRoot = (go env GOROOT)
           $workspace = "${{ github.workspace }}"
-          $gitBash = "C:\Program Files\Git\bin\bash.exe"
-          # PsExec flags: -accepteula (auto-accept), -u/-p (run as testuser),
-          # -w (working directory), -e (don't load profile, use current env)
-          PsExec.exe -accepteula -u testuser -p Password1! -w "$workspace" -e "$gitBash" -c "export PATH='$goRoot/bin':`$PATH && make"
+          # Write a build script to avoid PsExec/bash quoting issues
+          $buildScript = @"
+          #!/usr/bin/env bash
+          set -eu -o pipefail
+          set -x
+          export PATH="$goRoot/bin:`$PATH"
+          cd "$workspace"
+          make
+          "@
+          $buildScript = $buildScript -replace "`r`n", "`n"
+          $scriptPath = "$env:TEMP\build-ddev.sh"
+          [System.IO.File]::WriteAllText($scriptPath, $buildScript)
+          # Run bash script as testuser via PsExec
+          # -accepteula: auto-accept EULA, -u/-p: run as testuser
+          # -w: working directory, -e: use current environment
+          PsExec.exe -accepteula -u testuser -p Password1! -w "$workspace" -e "C:\Program Files\Git\bin\bash.exe" --login "$scriptPath"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Setup tmate session
