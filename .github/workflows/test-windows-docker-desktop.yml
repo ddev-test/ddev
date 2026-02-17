@@ -270,6 +270,11 @@ jobs:
           $testUserHome = "C:\Users\testuser"
           New-Item -ItemType Directory -Force -Path "$testUserHome\go" | Out-Null
           icacls "$testUserHome" /grant "testuser:(OI)(CI)F" /T /Q /L
+          # Set git safe.directory for testuser (needed for Windows builds)
+          $wsl = "C:\Windows\System32\wsl.exe"
+          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" git config --global --add safe.directory '*'
+          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" $wsl -u root -- bash -c "git config --global --add safe.directory '*'"
+          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" $wsl -- bash -c "git config --global --add safe.directory '*'"
 
 #      - name: Install mkcert
 #        shell: pwsh
