@@ -64,6 +64,133 @@ jobs:
     name: Windows Docker Desktop
 
     steps:
+      - name: Create non-admin testuser
+        shell: pwsh
+        run: |
+          Write-Host "Creating standard (non-admin) testuser"
+          net user testuser Password1! /add /y
+          # Add to docker-users if the group exists (Docker Desktop creates it)
+          try { net localgroup docker-users testuser /add 2>&1 } catch {}
+          if ($LASTEXITCODE -ne 0) { Write-Host "docker-users group not found (expected with Moby)" }
+          # Verify testuser is NOT in Administrators
+          $groups = net user testuser | Select-String "Local Group Memberships"
+          Write-Host "testuser group memberships: $groups"
+          Write-Host "testuser created successfully"
+
+      - name: Install WSL2 distribution
+        shell: pwsh
+        run: |
+          Write-Host "Setting WSL default version to 2"
+          wsl --set-default-version 2
+          Write-Host "Installing DDEV Ubuntu distro"
+          wsl --install --name DDEV --no-launch
+          # Create testuser, enable systemd, set default user
+          wsl -d DDEV --user root bash -c "useradd -m -s /bin/bash testuser && echo 'testuser:password' | chpasswd && usermod -aG sudo testuser && printf '[boot]\nsystemd=true\n\n[user]\ndefault=testuser\n' > /etc/wsl.conf"
+          wsl --set-default DDEV
+          Write-Host "Verifying WSL installation"
+          wsl --list --verbose
+
+      - name: Restart WSL to enable systemd
+        shell: pwsh
+        run: |
+          Write-Host "Shutting down WSL so systemd and default user take effect"
+          wsl --shutdown
+          Start-Sleep -Seconds 5
+          Write-Host "Verifying WSL comes back with correct user"
+          $user = (wsl whoami).Trim()
+          Write-Host "Current WSL user: $user"
+          if ($user -ne "testuser") {
+            Write-Error "Expected testuser but got $user"
+            exit 1
+          }
+          wsl -- uname -a
+          wsl -- systemctl is-system-running --wait
+
+      - name: Install Docker CLI in WSL2
+        shell: pwsh
+        run: |
+          # Install only docker-ce-cli (no daemon) from the Docker apt repository
+          wsl -u root -- bash -exc '
+            export DEBIAN_FRONTEND=noninteractive
+            apt-get update -qq >/dev/null
+            apt-get install -qq -y ca-certificates curl gnupg >/dev/null
+
+            install -m 0755 -d /etc/apt/keyrings
+            rm -f /etc/apt/keyrings/docker.gpg
+            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+            chmod a+r /etc/apt/keyrings/docker.gpg
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" \
+              | tee /etc/apt/sources.list.d/docker.list >/dev/null
+
+            apt-get update -qq >/dev/null
+            apt-get install -qq -y docker-ce-cli docker-compose-plugin >/dev/null
+            echo "Docker CLI installed:"
+            docker --version
+          '
+
+      - name: Expose Docker to WSL2 via TCP
+        shell: pwsh
+        run: |
+          # The runner uses Moby/Docker CE, not Docker Desktop.
+          # Configure dockerd to also listen on TCP so WSL2 can reach it.
+          # This is safe in CI since the runner is ephemeral and not exposed externally.
+          Write-Host "Configuring Docker daemon to listen on TCP port 2375..."
+          $daemonJson = "C:\ProgramData\docker\config\daemon.json"
+          $config = @{}
+          if (Test-Path $daemonJson) {
+            $config = Get-Content $daemonJson -Raw | ConvertFrom-Json -AsHashtable
+          } else {
+            New-Item -ItemType Directory -Force -Path (Split-Path $daemonJson) | Out-Null
+          }
+          # Add TCP listener alongside the existing named pipe
+          $config["hosts"] = @("npipe://", "tcp://0.0.0.0:2375")
+          $config | ConvertTo-Json -Depth 10 | Set-Content $daemonJson
+          Write-Host "daemon.json:"
+          Get-Content $daemonJson
+
+          Write-Host "Restarting Docker service..."
+          Restart-Service docker
+          # Wait for Docker to be ready
+          $timeout = 60
+          $elapsed = 0
+          while ($elapsed -lt $timeout) {
+            try {
+              $null = docker ps 2>&1
+              if ($LASTEXITCODE -eq 0) {
+                Write-Host "Docker is ready after ${elapsed}s"
+                break
+              }
+            } catch {}
+            Start-Sleep -Seconds 5
+            $elapsed += 5
+            Write-Host "Waiting for Docker... ${elapsed}s"
+          }
+          if ($elapsed -ge $timeout) {
+            Write-Error "Docker did not become ready within ${timeout}s"
+            exit 1
+          }
+
+      - name: Configure WSL2 Docker access and verify
+        shell: pwsh
+        run: |
+          # Set DOCKER_HOST in testuser's profile so docker CLI in WSL2 connects
+          # to the Windows host's dockerd over TCP.
+          # With WSL2 NAT networking, the Windows host is reachable via the default gateway.
+          wsl -u root -- bash -exc '
+            # Get the Windows host IP (default gateway from WSL2 perspective)
+            WIN_HOST=$(ip route show default | awk "{print \$3}")
+            echo "Windows host IP from WSL2: $WIN_HOST"
+
+            # Configure DOCKER_HOST for testuser
+            echo "export DOCKER_HOST=tcp://${WIN_HOST}:2375" >> /home/testuser/.bashrc
+            echo "export DOCKER_HOST=tcp://${WIN_HOST}:2375" >> /home/testuser/.profile
+
+            # Verify connectivity
+            export DOCKER_HOST="tcp://${WIN_HOST}:2375"
+            docker version
+            docker info
+          '
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
@@ -74,6 +201,33 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
+
+      - name: Install PsExec
+        shell: pwsh
+        run: |
+          $psexecDir = "$env:USERPROFILE\pstools"
+          New-Item -ItemType Directory -Force -Path $psexecDir | Out-Null
+          Write-Host "Downloading PsTools..."
+          Invoke-WebRequest -Uri "https://download.sysinternals.com/files/PSTools.zip" -OutFile "$psexecDir\PSTools.zip"
+          Expand-Archive -Path "$psexecDir\PSTools.zip" -DestinationPath $psexecDir -Force
+          echo "$psexecDir" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+          Write-Host "PsExec installed to $psexecDir"
+          & "$psexecDir\PsExec.exe" -accepteula 2>&1 | Out-Null
+
+      - name: Grant testuser access to workspace
+        shell: pwsh
+        run: |
+          # Give testuser full access to the checkout directory
+          icacls "${{ github.workspace }}" /grant "testuser:(OI)(CI)F" /T /Q
+          # Also grant access to the Go installation and USERPROFILE for Go cache
+          $goRoot = (go env GOROOT)
+          icacls "$goRoot" /grant "testuser:(OI)(CI)RX" /T /Q
+          # Grant access to Go cache/module paths
+          icacls "$env:USERPROFILE" /grant "testuser:(OI)(CI)F" /T /Q
+          # Create testuser home directory and GOPATH
+          $testUserHome = "C:\Users\testuser"
+          New-Item -ItemType Directory -Force -Path "$testUserHome\go" | Out-Null
+          icacls "$testUserHome" /grant "testuser:(OI)(CI)F" /T /Q
 
 #      - name: Install mkcert
 #        shell: pwsh
@@ -86,6 +240,13 @@ jobs:
 #          echo "$env:USERPROFILE\bin" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
 #          Write-Host "Installing mkcert CA"
 #          & $mkcertPath -install
+
+      - name: Install NSIS for Windows installer tests
+        shell: bash
+        run: |
+          choco install -y nsis gsudo
+          # Set up NSIS plugins needed for the DDEV installer
+          bash .ci-scripts/nsis_setup.sh "/c/Program Files (x86)/NSIS"
 
       - name: Show test configuration
         shell: pwsh
@@ -109,6 +270,17 @@ jobs:
           Write-Host "=== Git ==="
           git --version
           git describe --tags --always
+
+      - name: Build DDEV as testuser
+        shell: pwsh
+        run: |
+          $goRoot = (go env GOROOT)
+          $workspace = "${{ github.workspace }}"
+          $gitBash = "C:\Program Files\Git\bin\bash.exe"
+          # PsExec flags: -accepteula (auto-accept), -u/-p (run as testuser),
+          # -w (working directory), -e (don't load profile, use current env)
+          PsExec.exe -accepteula -u testuser -p Password1! -w "$workspace" -e "$gitBash" -c "export PATH='$goRoot/bin':`$PATH && make"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Setup tmate session
         if: ${{ inputs.debug_enabled }}
