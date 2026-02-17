@@ -109,24 +109,28 @@ jobs:
       - name: Install Docker CLI in WSL2
         shell: pwsh
         run: |
-          # Install only docker-ce-cli (no daemon) from the Docker apt repository
-          wsl -u root -- bash -exc '
-            export DEBIAN_FRONTEND=noninteractive
-            apt-get update -qq >/dev/null
-            apt-get install -qq -y ca-certificates curl gnupg >/dev/null
-
-            install -m 0755 -d /etc/apt/keyrings
-            rm -f /etc/apt/keyrings/docker.gpg
-            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-            chmod a+r /etc/apt/keyrings/docker.gpg
-            echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" \
-              | tee /etc/apt/sources.list.d/docker.list >/dev/null
-
-            apt-get update -qq >/dev/null
-            apt-get install -qq -y docker-ce-cli docker-compose-plugin >/dev/null
-            echo "Docker CLI installed:"
-            docker --version
-          '
+          # Write script with Unix line endings to avoid \r issues when pwsh passes to WSL
+          $script = @'
+          #!/usr/bin/env bash
+          set -eu -o pipefail
+          set -x
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update -qq >/dev/null
+          apt-get install -qq -y ca-certificates curl gnupg >/dev/null
+          install -m 0755 -d /etc/apt/keyrings
+          rm -f /etc/apt/keyrings/docker.gpg
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+          chmod a+r /etc/apt/keyrings/docker.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list >/dev/null
+          apt-get update -qq >/dev/null
+          apt-get install -qq -y docker-ce-cli docker-compose-plugin >/dev/null
+          echo "Docker CLI installed:"
+          docker --version
+          '@
+          # Write with explicit Unix line endings
+          $script = $script -replace "`r`n", "`n"
+          [System.IO.File]::WriteAllText("$env:TEMP\install-docker-cli.sh", $script)
+          wsl -u root -- bash -e /mnt/c/Users/$env:USERNAME/AppData/Local/Temp/install-docker-cli.sh
 
       - name: Expose Docker to WSL2 via TCP
         shell: pwsh
@@ -176,20 +180,24 @@ jobs:
           # Set DOCKER_HOST in testuser's profile so docker CLI in WSL2 connects
           # to the Windows host's dockerd over TCP.
           # With WSL2 NAT networking, the Windows host is reachable via the default gateway.
-          wsl -u root -- bash -exc '
-            # Get the Windows host IP (default gateway from WSL2 perspective)
-            WIN_HOST=$(ip route show default | awk "{print \$3}")
-            echo "Windows host IP from WSL2: $WIN_HOST"
-
-            # Configure DOCKER_HOST for testuser
-            echo "export DOCKER_HOST=tcp://${WIN_HOST}:2375" >> /home/testuser/.bashrc
-            echo "export DOCKER_HOST=tcp://${WIN_HOST}:2375" >> /home/testuser/.profile
-
-            # Verify connectivity
-            export DOCKER_HOST="tcp://${WIN_HOST}:2375"
-            docker version
-            docker info
-          '
+          $script = @'
+          #!/usr/bin/env bash
+          set -eu -o pipefail
+          set -x
+          # Get the Windows host IP (default gateway from WSL2 perspective)
+          WIN_HOST=$(ip route show default | awk '{print $3}')
+          echo "Windows host IP from WSL2: $WIN_HOST"
+          # Configure DOCKER_HOST for testuser
+          echo "export DOCKER_HOST=tcp://${WIN_HOST}:2375" >> /home/testuser/.bashrc
+          echo "export DOCKER_HOST=tcp://${WIN_HOST}:2375" >> /home/testuser/.profile
+          # Verify connectivity
+          export DOCKER_HOST="tcp://${WIN_HOST}:2375"
+          docker version
+          docker info
+          '@
+          $script = $script -replace "`r`n", "`n"
+          [System.IO.File]::WriteAllText("$env:TEMP\configure-docker-wsl.sh", $script)
+          wsl -u root -- bash -e /mnt/c/Users/$env:USERNAME/AppData/Local/Temp/configure-docker-wsl.sh
 
       - name: Checkout code
         uses: actions/checkout@v4
