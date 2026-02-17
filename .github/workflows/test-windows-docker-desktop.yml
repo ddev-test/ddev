@@ -225,7 +225,8 @@ jobs:
           Expand-Archive -Path "$psexecDir\PSTools.zip" -DestinationPath $psexecDir -Force
           echo "$psexecDir" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
           Write-Host "PsExec installed to $psexecDir"
-          & "$psexecDir\PsExec.exe" -accepteula 2>&1 | Out-Null
+          # Pre-accept the EULA via registry to avoid interactive prompts
+          reg add "HKCU\Software\Sysinternals\PsExec" /v EulaAccepted /t REG_DWORD /d 1 /f
 
       - name: Grant testuser access to workspace
         shell: pwsh
