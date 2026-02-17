@@ -84,6 +84,12 @@ jobs:
           Write-Host "testuser group memberships: $groups"
           Write-Host "testuser created successfully"
 
+      - name: Create shared temp directory
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "C:\ddev-ci-tmp" | Out-Null
+          icacls "C:\ddev-ci-tmp" /grant "Everyone:(OI)(CI)F" /T /Q
+
       - name: Install PsExec
         shell: pwsh
         run: |
@@ -152,10 +158,9 @@ jobs:
           '@
           # Write with explicit Unix line endings
           $script = $script -replace "`r`n", "`n"
-          $tempFile = "$env:TEMP\install-docker-cli.sh"
-          [System.IO.File]::WriteAllText($tempFile, $script)
+          [System.IO.File]::WriteAllText("C:\ddev-ci-tmp\install-docker-cli.sh", $script)
           # Run as testuser who owns the WSL distro, but use root inside WSL for apt
-          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" cmd /c "wsl -u root -- bash -e /mnt/c/Users/$env:USERNAME/AppData/Local/Temp/install-docker-cli.sh"
+          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" cmd /c "wsl -u root -- bash -e /mnt/c/ddev-ci-tmp/install-docker-cli.sh"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Expose Docker to WSL2 via TCP
@@ -227,9 +232,8 @@ jobs:
           docker info
           '@
           $script = $script -replace "`r`n", "`n"
-          $tempFile = "$env:TEMP\configure-docker-wsl.sh"
-          [System.IO.File]::WriteAllText($tempFile, $script)
-          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" cmd /c "wsl -u root -- bash -e /mnt/c/Users/$env:USERNAME/AppData/Local/Temp/configure-docker-wsl.sh"
+          [System.IO.File]::WriteAllText("C:\ddev-ci-tmp\configure-docker-wsl.sh", $script)
+          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" cmd /c "wsl -u root -- bash -e /mnt/c/ddev-ci-tmp/configure-docker-wsl.sh"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Checkout code
@@ -318,12 +322,11 @@ jobs:
           make
           "@
           $buildScript = $buildScript -replace "`r`n", "`n"
-          $scriptPath = "$env:TEMP\build-ddev.sh"
-          [System.IO.File]::WriteAllText($scriptPath, $buildScript)
+          [System.IO.File]::WriteAllText("C:\ddev-ci-tmp\build-ddev.sh", $buildScript)
           # Run bash script as testuser via PsExec
           # -accepteula: auto-accept EULA, -u/-p: run as testuser
           # -w: working directory, -e: use current environment
-          PsExec.exe -accepteula -u testuser -p Password1! -w "$workspace" -e "C:\Program Files\Git\bin\bash.exe" --login "$scriptPath"
+          PsExec.exe -accepteula -u testuser -p Password1! -w "$workspace" -e "C:\Program Files\Git\bin\bash.exe" --login "C:\ddev-ci-tmp\build-ddev.sh"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Setup tmate session
