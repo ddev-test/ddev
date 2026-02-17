@@ -75,17 +75,17 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
 
-      - name: Install mkcert
-        shell: pwsh
-        run: |
-          $mkcertUrl = "https://github.com/FiloSottile/mkcert/releases/download/${{ env.MKCERT_VERSION }}/mkcert-${{ env.MKCERT_VERSION }}-windows-amd64.exe"
-          $mkcertPath = "$env:USERPROFILE\bin\mkcert.exe"
-          New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\bin" | Out-Null
-          Write-Host "Downloading mkcert from $mkcertUrl"
-          Invoke-WebRequest -Uri $mkcertUrl -OutFile $mkcertPath
-          echo "$env:USERPROFILE\bin" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
-          Write-Host "Installing mkcert CA"
-          & $mkcertPath -install
+#      - name: Install mkcert
+#        shell: pwsh
+#        run: |
+#          $mkcertUrl = "https://github.com/FiloSottile/mkcert/releases/download/${{ env.MKCERT_VERSION }}/mkcert-${{ env.MKCERT_VERSION }}-windows-amd64.exe"
+#          $mkcertPath = "$env:USERPROFILE\bin\mkcert.exe"
+#          New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\bin" | Out-Null
+#          Write-Host "Downloading mkcert from $mkcertUrl"
+#          Invoke-WebRequest -Uri $mkcertUrl -OutFile $mkcertPath
+#          echo "$env:USERPROFILE\bin" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+#          Write-Host "Installing mkcert CA"
+#          & $mkcertPath -install
 
       - name: Show test configuration
         shell: pwsh
@@ -109,21 +109,6 @@ jobs:
           Write-Host "=== Git ==="
           git --version
           git describe --tags --always
-
-      - name: Clean up any existing containers
-        shell: pwsh
-        run: |
-          $ids = docker ps -aq 2>$null
-          if ($ids) {
-            Write-Host "Removing existing containers..."
-            docker rm -f $ids
-          } else {
-            Write-Host "No existing containers to clean up"
-          }
-
-      - name: Build DDEV
-        shell: bash
-        run: make
 
       - name: Setup tmate session
         if: ${{ inputs.debug_enabled }}
