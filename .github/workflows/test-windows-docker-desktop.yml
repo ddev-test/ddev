@@ -260,16 +260,16 @@ jobs:
         shell: pwsh
         run: |
           # Give testuser full access to the checkout directory
-          icacls "${{ github.workspace }}" /grant "testuser:(OI)(CI)F" /T /Q
+          icacls "${{ github.workspace }}" /grant "testuser:(OI)(CI)F" /T /Q /L
           # Also grant access to the Go installation and USERPROFILE for Go cache
           $goRoot = (go env GOROOT)
-          icacls "$goRoot" /grant "testuser:(OI)(CI)RX" /T /Q
-          # Grant access to Go cache/module paths
-          icacls "$env:USERPROFILE" /grant "testuser:(OI)(CI)F" /T /Q
+          icacls "$goRoot" /grant "testuser:(OI)(CI)RX" /T /Q /L
+          # Grant access to Go cache/module paths (skip legacy junction points with /L)
+          icacls "$env:USERPROFILE" /grant "testuser:(OI)(CI)F" /T /Q /L
           # Create testuser home directory and GOPATH
           $testUserHome = "C:\Users\testuser"
           New-Item -ItemType Directory -Force -Path "$testUserHome\go" | Out-Null
-          icacls "$testUserHome" /grant "testuser:(OI)(CI)F" /T /Q
+          icacls "$testUserHome" /grant "testuser:(OI)(CI)F" /T /Q /L
 
 #      - name: Install mkcert
 #        shell: pwsh
