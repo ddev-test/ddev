@@ -64,6 +64,13 @@ jobs:
     name: Windows Docker Desktop
 
     steps:
+      - name: Ensure Git Bash is first in PATH
+        shell: pwsh
+        run: |
+          # GITHUB_PATH entries are prepended to PATH for subsequent steps
+          "C:\Program Files\Git\usr\bin" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+          "C:\Program Files\Git\bin" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+
       - name: Create non-admin testuser
         shell: pwsh
         run: |
@@ -256,11 +263,14 @@ jobs:
 #          & $mkcertPath -install
 
       - name: Install NSIS for Windows installer tests
-        shell: bash
+        shell: pwsh
         run: |
           choco install -y nsis gsudo
+          # Refresh PATH so gsudo and makensis are available
+          Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
+          refreshenv
           # Set up NSIS plugins needed for the DDEV installer
-          bash .ci-scripts/nsis_setup.sh "/c/Program Files (x86)/NSIS"
+          & "C:\Program Files\Git\bin\bash.exe" -c 'bash .ci-scripts/nsis_setup.sh "/c/Program Files (x86)/NSIS"'
 
       - name: Show test configuration
         shell: pwsh
