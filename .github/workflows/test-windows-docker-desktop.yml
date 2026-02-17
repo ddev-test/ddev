@@ -1,0 +1,159 @@
+name: Test Windows Docker Desktop
+
+on:
+  pull_request:
+    paths:
+      - "go.*"
+      - "pkg/**"
+      - "cmd/**"
+      - "Makefile"
+      - "vendor/**"
+      - ".github/workflows/**"
+      - "!.github/workflows/docs**"
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      debug_enabled:
+        description: 'Run the build with tmate set "debug_enabled"'
+        type: boolean
+        required: false
+        default: false
+      testargs:
+        description: 'TESTARGS value'
+        type: string
+        required: false
+        default: '-failfast'
+      gotest_short:
+        description: 'GOTEST_SHORT value (16=drupal11 only)'
+        type: string
+        required: false
+        default: '16'
+      ddev_embargo_tests:
+        description: 'Pipe-separated list of test names to skip (e.g., TestName1|TestName2)'
+        type: string
+        required: false
+        default: ''
+      make_target:
+        description: 'Make target to run'
+        type: string
+        required: false
+        default: 'test'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  GOTEST_SHORT: ${{ inputs.gotest_short || '16' }}
+  TESTARGS: ${{ inputs.testargs || '-failfast' }}
+  MAKE_TARGET: ${{ inputs.make_target || 'test' }}
+  DDEV_EMBARGO_TESTS: ${{ inputs.ddev_embargo_tests || vars.DDEV_EMBARGO_TESTS || '' }}
+  DDEV_SKIP_NODEJS_TEST: 'true'
+  GO_VERSION: '1.26.0'
+  MKCERT_VERSION: 'v1.4.4'
+
+jobs:
+  test-windows-docker-desktop:
+    runs-on: windows-2025
+    timeout-minutes: 240
+
+    name: Windows Docker Desktop
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Install mkcert
+        shell: pwsh
+        run: |
+          $mkcertUrl = "https://github.com/FiloSottile/mkcert/releases/download/${{ env.MKCERT_VERSION }}/mkcert-${{ env.MKCERT_VERSION }}-windows-amd64.exe"
+          $mkcertPath = "$env:USERPROFILE\bin\mkcert.exe"
+          New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\bin" | Out-Null
+          Write-Host "Downloading mkcert from $mkcertUrl"
+          Invoke-WebRequest -Uri $mkcertUrl -OutFile $mkcertPath
+          echo "$env:USERPROFILE\bin" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+          Write-Host "Installing mkcert CA"
+          & $mkcertPath -install
+
+      - name: Show test configuration
+        shell: pwsh
+        run: |
+          Write-Host "=== Test Configuration ==="
+          Write-Host "GOTEST_SHORT: ${{ env.GOTEST_SHORT }}"
+          Write-Host "TESTARGS: ${{ env.TESTARGS }}"
+          Write-Host "MAKE_TARGET: ${{ env.MAKE_TARGET }}"
+          Write-Host ""
+          Write-Host "=== Windows Host ==="
+          Write-Host "Architecture: $env:PROCESSOR_ARCHITECTURE"
+          Write-Host "OS: $((Get-CimInstance Win32_OperatingSystem).Caption)"
+          Write-Host "Runner: ${{ runner.os }} / ${{ runner.arch }}"
+          Write-Host ""
+          Write-Host "=== Go ==="
+          go version
+          Write-Host ""
+          Write-Host "=== Docker ==="
+          docker version
+          Write-Host ""
+          Write-Host "=== Git ==="
+          git --version
+          git describe --tags --always
+
+      - name: Clean up any existing containers
+        shell: pwsh
+        run: |
+          $ids = docker ps -aq 2>$null
+          if ($ids) {
+            Write-Host "Removing existing containers..."
+            docker rm -f $ids
+          } else {
+            Write-Host "No existing containers to clean up"
+          }
+
+      - name: Build DDEV
+        shell: bash
+        run: make
+
+      - name: Setup tmate session
+        if: ${{ inputs.debug_enabled }}
+        uses: mxschmitt/action-tmate@v3
+        with:
+          limit-access-to-actor: true
+
+# Uncomment when ready to run tests
+#      - name: Run Windows installer tests
+#        shell: bash
+#        env:
+#          DDEV_TEST_USE_REAL_INSTALLER: 'true'
+#          DDEV_NO_INSTRUMENTATION: 'true'
+#          DDEV_NONINTERACTIVE: 'true'
+#          DDEV_DEBUG: 'true'
+#        run: |
+#          make testwininstaller TESTARGS="-failfast"
+#
+#      - name: Run DDEV tests
+#        shell: bash
+#        env:
+#          GOTEST_SHORT: ${{ env.GOTEST_SHORT }}
+#          DDEV_NO_INSTRUMENTATION: 'true'
+#          DDEV_NONINTERACTIVE: 'true'
+#          DDEV_DEBUG: 'true'
+#          DDEV_SKIP_NODEJS_TEST: 'true'
+#          DDEV_EMBARGO_TESTS: ${{ env.DDEV_EMBARGO_TESTS }}
+#          DOCKER_SCAN_SUGGEST: 'false'
+#          DOCKER_SCOUT_SUGGEST: 'false'
+#          BUILDKIT_PROGRESS: plain
+#        run: |
+#          make ${{ env.MAKE_TARGET }} TESTARGS="${{ env.TESTARGS }}"
+#          ddev poweroff || true
