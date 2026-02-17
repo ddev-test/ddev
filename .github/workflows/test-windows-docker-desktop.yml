@@ -152,6 +152,11 @@ jobs:
           Write-Host "daemon.json:"
           Get-Content $daemonJson
 
+          # Allow WSL2 to reach Docker on TCP 2375 through Windows Firewall
+          Write-Host "Adding firewall rule for Docker TCP access from WSL2..."
+          New-NetFirewallRule -DisplayName "Docker daemon TCP 2375" `
+            -Direction Inbound -Action Allow -Protocol TCP -LocalPort 2375
+
           Write-Host "Restarting Docker service..."
           Restart-Service docker
           # Wait for Docker to be ready
