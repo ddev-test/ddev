@@ -321,31 +321,12 @@ jobs:
           git --version
           git describe --tags --always
 
-      - name: Build DDEV as testuser
-        shell: pwsh
-        run: |
-          # Convert Windows backslash paths to forward slashes for bash
-          $goRoot = (go env GOROOT) -replace '\\', '/'
-          $workspace = "${{ github.workspace }}" -replace '\\', '/'
-          # Write a build script to avoid PsExec/bash quoting issues
-          $buildScript = @"
-          #!/usr/bin/env bash
-          set -eu -o pipefail
-          set -x
-          export PATH="$goRoot/bin:`$PATH"
-          cd "$workspace"
-          make
-          "@
-          $buildScript = $buildScript -replace "`r`n", "`n"
-          [System.IO.File]::WriteAllText("C:\ddev-ci-tmp\build-ddev.sh", $buildScript)
-          # Run bash script as testuser via PsExec
-          # -accepteula: auto-accept EULA, -u/-p: run as testuser
-          # -w: working directory, -e: use current environment
-          PsExec.exe -accepteula -u testuser -p Password1! -w "$workspace" -e "C:\Program Files\Git\bin\bash.exe" --login "C:\ddev-ci-tmp\build-ddev.sh"
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build DDEV
+        shell: bash
+        run: make
 
       - name: Setup tmate session
-        if: ${{ inputs.debug_enabled }}
+        if: ${{ inputs.debug_enabled || failure() }}
         uses: mxschmitt/action-tmate@v3
         with:
           limit-access-to-actor: true
