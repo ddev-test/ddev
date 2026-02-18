@@ -84,15 +84,13 @@ jobs:
           Write-Host "testuser group memberships: $groups"
           Write-Host "testuser created successfully"
 
-      - name: Create shared temp directory
+      - name: Create shared temp and install PsExec
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path "C:\ddev-ci-tmp" | Out-Null
           icacls "C:\ddev-ci-tmp" /grant "Everyone:(OI)(CI)F" /T /Q
 
-      - name: Install PsExec
-        shell: pwsh
-        run: |
+          # Install PsExec
           $psexecDir = "$env:USERPROFILE\pstools"
           New-Item -ItemType Directory -Force -Path $psexecDir | Out-Null
           Write-Host "Downloading PsTools..."
@@ -104,16 +102,35 @@ jobs:
           reg add "HKCU\Software\Sysinternals\PsExec" /v EulaAccepted /t REG_DWORD /d 1 /f
           reg add "HKU\.DEFAULT\Software\Sysinternals\PsExec" /v EulaAccepted /t REG_DWORD /d 1 /f
 
+          # Create helper scripts for running commands as testuser
+          # run-as-testuser.cmd: Run a Windows command as testuser
+          $runAsTestuser = @'
+          @echo off
+          PsExec.exe -accepteula -nobanner -u testuser -p Password1! -w "C:\" %*
+          '@
+          $runAsTestuser = $runAsTestuser.Trim()
+          [System.IO.File]::WriteAllText("C:\ddev-ci-tmp\run-as-testuser.cmd", $runAsTestuser)
+
+          # wsl-testuser.cmd: Run wsl.exe as testuser (distros are per-user)
+          $wslTestuser = @'
+          @echo off
+          PsExec.exe -accepteula -nobanner -u testuser -p Password1! -w "C:\" C:\Windows\System32\wsl.exe %*
+          '@
+          $wslTestuser = $wslTestuser.Trim()
+          [System.IO.File]::WriteAllText("C:\ddev-ci-tmp\wsl-testuser.cmd", $wslTestuser)
+
+          # Add to PATH so they're available in all steps
+          "C:\ddev-ci-tmp" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+          Write-Host "Helper scripts created: run-as-testuser.cmd, wsl-testuser.cmd"
+
       - name: Install WSL2 distribution as testuser
         shell: pwsh
         run: |
-          # WSL distros are per-user, so install as testuser via PsExec.
-          # Run wsl.exe directly (not through cmd /c) to avoid quoting issues.
-          $wsl = "C:\Windows\System32\wsl.exe"
+          # WSL distros are per-user, so install as testuser
           Write-Host "Setting WSL default version to 2"
           wsl --set-default-version 2
           Write-Host "Installing DDEV Ubuntu distro as testuser"
-          PsExec.exe -accepteula -nobanner -u testuser -p Password1! -w "C:\" $wsl --install --name DDEV --no-launch
+          wsl-testuser.cmd --install --name DDEV --no-launch
           # Write the distro setup commands to a script to avoid nested quoting
           $script = @'
           #!/usr/bin/env bash
@@ -126,27 +143,25 @@ jobs:
           '@
           $script = $script -replace "`r`n", "`n"
           [System.IO.File]::WriteAllText("C:\ddev-ci-tmp\setup-wsl-distro.sh", $script)
-          PsExec.exe -accepteula -nobanner -u testuser -p Password1! -w "C:\" $wsl -d DDEV --user root bash -e /mnt/c/ddev-ci-tmp/setup-wsl-distro.sh
-          PsExec.exe -accepteula -nobanner -u testuser -p Password1! -w "C:\" $wsl --set-default DDEV
+          wsl-testuser.cmd -d DDEV --user root bash -e /mnt/c/ddev-ci-tmp/setup-wsl-distro.sh
+          wsl-testuser.cmd --set-default DDEV
           Write-Host "Verifying WSL installation"
-          PsExec.exe -accepteula -nobanner -u testuser -p Password1! -w "C:\" $wsl --list --verbose
+          wsl-testuser.cmd --list --verbose
 
       - name: Restart WSL to enable systemd
         shell: pwsh
         run: |
-          $wsl = "C:\Windows\System32\wsl.exe"
           Write-Host "Shutting down WSL so systemd and default user take effect"
-          PsExec.exe -accepteula -nobanner -u testuser -p Password1! -w "C:\" $wsl --shutdown
+          wsl-testuser.cmd --shutdown
           Start-Sleep -Seconds 5
           Write-Host "Verifying WSL comes back with correct user"
-          PsExec.exe -accepteula -nobanner -u testuser -p Password1! -w "C:\" $wsl whoami
-          PsExec.exe -accepteula -nobanner -u testuser -p Password1! -w "C:\" $wsl -- uname -a
-          PsExec.exe -accepteula -nobanner -u testuser -p Password1! -w "C:\" $wsl -- systemctl is-system-running --wait
+          wsl-testuser.cmd whoami
+          wsl-testuser.cmd -- uname -a
+          wsl-testuser.cmd -- systemctl is-system-running --wait
 
       - name: Install Docker CLI in WSL2
         shell: pwsh
         run: |
-          $wsl = "C:\Windows\System32\wsl.exe"
           # Write script with Unix line endings to avoid \r issues when pwsh passes to WSL
           $script = @'
           #!/usr/bin/env bash
@@ -168,7 +183,7 @@ jobs:
           $script = $script -replace "`r`n", "`n"
           [System.IO.File]::WriteAllText("C:\ddev-ci-tmp\install-docker-cli.sh", $script)
           # Run as testuser who owns the WSL distro, but use root inside WSL for apt
-          PsExec.exe -accepteula -nobanner -u testuser -p Password1! -w "C:\" $wsl -u root -- bash -e /mnt/c/ddev-ci-tmp/install-docker-cli.sh
+          wsl-testuser.cmd -u root -- bash -e /mnt/c/ddev-ci-tmp/install-docker-cli.sh
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Expose Docker to WSL2 via TCP
@@ -221,7 +236,6 @@ jobs:
       - name: Configure WSL2 Docker access and verify
         shell: pwsh
         run: |
-          $wsl = "C:\Windows\System32\wsl.exe"
           # Set DOCKER_HOST in testuser's profile so docker CLI in WSL2 connects
           # to the Windows host's dockerd over TCP.
           # With WSL2 NAT networking, the Windows host is reachable via the default gateway.
@@ -242,7 +256,7 @@ jobs:
           '@
           $script = $script -replace "`r`n", "`n"
           [System.IO.File]::WriteAllText("C:\ddev-ci-tmp\configure-docker-wsl.sh", $script)
-          PsExec.exe -accepteula -nobanner -u testuser -p Password1! -w "C:\" $wsl -u root -- bash -e /mnt/c/ddev-ci-tmp/configure-docker-wsl.sh
+          wsl-testuser.cmd -u root -- bash -e /mnt/c/ddev-ci-tmp/configure-docker-wsl.sh
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Checkout code
@@ -271,10 +285,9 @@ jobs:
           New-Item -ItemType Directory -Force -Path "$testUserHome\go" | Out-Null
           icacls "$testUserHome" /grant "testuser:(OI)(CI)F" /T /Q /L
           # Set git safe.directory for testuser (needed for Windows builds)
-          $wsl = "C:\Windows\System32\wsl.exe"
-          PsExec.exe -accepteula -nobanner -u testuser -p Password1! -w "C:\" git config --global --add safe.directory '*'
-          PsExec.exe -accepteula -nobanner -u testuser -p Password1! -w "C:\" $wsl -u root -- bash -c "git config --global --add safe.directory '*'"
-          PsExec.exe -accepteula -nobanner -u testuser -p Password1! -w "C:\" $wsl -- bash -c "git config --global --add safe.directory '*'"
+          run-as-testuser.cmd git config --global --add safe.directory '*'
+          wsl-testuser.cmd -u root -- bash -c "git config --global --add safe.directory '*'"
+          wsl-testuser.cmd -- bash -c "git config --global --add safe.directory '*'"
 
 #      - name: Install mkcert
 #        shell: pwsh
