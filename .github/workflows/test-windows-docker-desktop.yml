@@ -113,7 +113,7 @@ jobs:
           Write-Host "Setting WSL default version to 2"
           wsl --set-default-version 2
           Write-Host "Installing DDEV Ubuntu distro as testuser"
-          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" $wsl --install --name DDEV --no-launch
+          PsExec.exe -accepteula -nobanner -u testuser -p Password1! -w "C:\" $wsl --install --name DDEV --no-launch
           # Write the distro setup commands to a script to avoid nested quoting
           $script = @'
           #!/usr/bin/env bash
@@ -126,22 +126,22 @@ jobs:
           '@
           $script = $script -replace "`r`n", "`n"
           [System.IO.File]::WriteAllText("C:\ddev-ci-tmp\setup-wsl-distro.sh", $script)
-          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" $wsl -d DDEV --user root bash -e /mnt/c/ddev-ci-tmp/setup-wsl-distro.sh
-          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" $wsl --set-default DDEV
+          PsExec.exe -accepteula -nobanner -u testuser -p Password1! -w "C:\" $wsl -d DDEV --user root bash -e /mnt/c/ddev-ci-tmp/setup-wsl-distro.sh
+          PsExec.exe -accepteula -nobanner -u testuser -p Password1! -w "C:\" $wsl --set-default DDEV
           Write-Host "Verifying WSL installation"
-          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" $wsl --list --verbose
+          PsExec.exe -accepteula -nobanner -u testuser -p Password1! -w "C:\" $wsl --list --verbose
 
       - name: Restart WSL to enable systemd
         shell: pwsh
         run: |
           $wsl = "C:\Windows\System32\wsl.exe"
           Write-Host "Shutting down WSL so systemd and default user take effect"
-          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" $wsl --shutdown
+          PsExec.exe -accepteula -nobanner -u testuser -p Password1! -w "C:\" $wsl --shutdown
           Start-Sleep -Seconds 5
           Write-Host "Verifying WSL comes back with correct user"
-          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" $wsl whoami
-          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" $wsl -- uname -a
-          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" $wsl -- systemctl is-system-running --wait
+          PsExec.exe -accepteula -nobanner -u testuser -p Password1! -w "C:\" $wsl whoami
+          PsExec.exe -accepteula -nobanner -u testuser -p Password1! -w "C:\" $wsl -- uname -a
+          PsExec.exe -accepteula -nobanner -u testuser -p Password1! -w "C:\" $wsl -- systemctl is-system-running --wait
 
       - name: Install Docker CLI in WSL2
         shell: pwsh
@@ -168,7 +168,7 @@ jobs:
           $script = $script -replace "`r`n", "`n"
           [System.IO.File]::WriteAllText("C:\ddev-ci-tmp\install-docker-cli.sh", $script)
           # Run as testuser who owns the WSL distro, but use root inside WSL for apt
-          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" $wsl -u root -- bash -e /mnt/c/ddev-ci-tmp/install-docker-cli.sh
+          PsExec.exe -accepteula -nobanner -u testuser -p Password1! -w "C:\" $wsl -u root -- bash -e /mnt/c/ddev-ci-tmp/install-docker-cli.sh
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Expose Docker to WSL2 via TCP
@@ -242,7 +242,7 @@ jobs:
           '@
           $script = $script -replace "`r`n", "`n"
           [System.IO.File]::WriteAllText("C:\ddev-ci-tmp\configure-docker-wsl.sh", $script)
-          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" $wsl -u root -- bash -e /mnt/c/ddev-ci-tmp/configure-docker-wsl.sh
+          PsExec.exe -accepteula -nobanner -u testuser -p Password1! -w "C:\" $wsl -u root -- bash -e /mnt/c/ddev-ci-tmp/configure-docker-wsl.sh
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Checkout code
@@ -272,9 +272,9 @@ jobs:
           icacls "$testUserHome" /grant "testuser:(OI)(CI)F" /T /Q /L
           # Set git safe.directory for testuser (needed for Windows builds)
           $wsl = "C:\Windows\System32\wsl.exe"
-          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" git config --global --add safe.directory '*'
-          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" $wsl -u root -- bash -c "git config --global --add safe.directory '*'"
-          PsExec.exe -accepteula -u testuser -p Password1! -w "C:\" $wsl -- bash -c "git config --global --add safe.directory '*'"
+          PsExec.exe -accepteula -nobanner -u testuser -p Password1! -w "C:\" git config --global --add safe.directory '*'
+          PsExec.exe -accepteula -nobanner -u testuser -p Password1! -w "C:\" $wsl -u root -- bash -c "git config --global --add safe.directory '*'"
+          PsExec.exe -accepteula -nobanner -u testuser -p Password1! -w "C:\" $wsl -- bash -c "git config --global --add safe.directory '*'"
 
 #      - name: Install mkcert
 #        shell: pwsh
