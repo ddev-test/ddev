@@ -85,8 +85,8 @@ func UnBzip2(source string, destDirectory string) error {
 
 	gf := bzip2.NewReader(br)
 
-	fname := strings.TrimSuffix(filepath.Base(f.Name()), ".bz2")
-	exFile, err := os.Create(filepath.Join(destDirectory, fname))
+	fname2 := strings.TrimSuffix(filepath.Base(f.Name()), ".bz2")
+	exFile, err := os.Create(filepath.Join(destDirectory, fname2))
 	if err != nil {
 		return err
 	}
