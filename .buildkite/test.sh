@@ -15,6 +15,16 @@ if [[ ${BUILDKITE_MESSAGE:-} == *"[skip buildkite]"* ]] || [[ ${BUILDKITE_MESSAG
   exit 0
 fi
 
+git fetch --depth=1 --no-tags https://github.com/ddev/ddev embargo:refs/embargo-tmp
+DDEV_EMBARGO_TESTS=$(git show refs/embargo-tmp:.github/embargo/DDEV_EMBARGO_TESTS)
+DDEV_EMBARGO_PHP_VERSIONS=$(git show refs/embargo-tmp:.github/embargo/DDEV_EMBARGO_PHP_VERSIONS)
+git update-ref -d refs/embargo-tmp
+[[ "$DDEV_EMBARGO_TESTS" =~ ^[A-Za-z0-9|_\ -]*$ ]] || DDEV_EMBARGO_TESTS=""
+[[ "$DDEV_EMBARGO_PHP_VERSIONS" =~ ^[0-9.,]*$ ]] || DDEV_EMBARGO_PHP_VERSIONS=""
+echo "DDEV_EMBARGO_TESTS=${DDEV_EMBARGO_TESTS}"
+echo "DDEV_EMBARGO_PHP_VERSIONS=${DDEV_EMBARGO_PHP_VERSIONS}"
+export DDEV_EMBARGO_TESTS DDEV_EMBARGO_PHP_VERSIONS
+
 export PATH=$PATH:/home/linuxbrew/.linuxbrew/bin
 os=$(go env GOOS)
 

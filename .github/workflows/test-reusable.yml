@@ -78,16 +78,6 @@ on:
         required: false
         type: string
         default: 'true'
-      ddev_embargo_tests:
-        description: 'DDEV_EMBARGO_TESTS value - pipe-separated list of test names to skip (e.g., TestName1|TestName2)'
-        required: false
-        type: string
-        default: ''
-      ddev_embargo_php_versions:
-        description: 'DDEV_EMBARGO_PHP_VERSIONS value - comma-separated list of PHP versions to skip in TestPHPConfig (e.g., "8.4,8.3")'
-        required: false
-        type: string
-        default: ''
       debug_enabled:
         description: 'Run the build with tmate set "debug_enabled"'
         required: false
@@ -140,8 +130,6 @@ jobs:
       CGO_ENABLED: ${{ inputs.cgo_enabled }}
       DDEV_NONINTERACTIVE: "true"
       DDEV_SKIP_NODEJS_TEST: ${{ inputs.ddev_skip_nodejs_test }}
-      DDEV_EMBARGO_TESTS: ${{ inputs.ddev_embargo_tests }}
-      DDEV_EMBARGO_PHP_VERSIONS: ${{ inputs.ddev_embargo_php_versions }}
       GOTEST_SHORT: ${{ inputs.gotest_short }}
       MAKE_TARGET: ${{ inputs.make_target }}
       TESTARGS: ${{ inputs.testargs }}
@@ -159,6 +147,19 @@ jobs:
         with:
           # We need to get all branches and tags for git describe to work properly
           fetch-depth: 0
+
+      - name: Load embargo variables
+        run: |
+          git fetch --depth=1 --no-tags https://github.com/ddev/ddev embargo:refs/embargo-tmp
+          DDEV_EMBARGO_TESTS=$(git show refs/embargo-tmp:.github/embargo/DDEV_EMBARGO_TESTS)
+          DDEV_EMBARGO_PHP_VERSIONS=$(git show refs/embargo-tmp:.github/embargo/DDEV_EMBARGO_PHP_VERSIONS)
+          git update-ref -d refs/embargo-tmp
+          [[ "$DDEV_EMBARGO_TESTS" =~ ^[A-Za-z0-9|_\ -]*$ ]] || DDEV_EMBARGO_TESTS=""
+          [[ "$DDEV_EMBARGO_PHP_VERSIONS" =~ ^[0-9.,]*$ ]] || DDEV_EMBARGO_PHP_VERSIONS=""
+          echo "DDEV_EMBARGO_TESTS=${DDEV_EMBARGO_TESTS}"
+          echo "DDEV_EMBARGO_PHP_VERSIONS=${DDEV_EMBARGO_PHP_VERSIONS}"
+          echo "DDEV_EMBARGO_TESTS=$DDEV_EMBARGO_TESTS" >> $GITHUB_ENV
+          echo "DDEV_EMBARGO_PHP_VERSIONS=$DDEV_EMBARGO_PHP_VERSIONS" >> $GITHUB_ENV
 
       - name: Get Date
         id: get-date
