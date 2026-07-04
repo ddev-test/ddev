@@ -1,0 +1,29 @@
+name: Comment on release
+
+# Comments on issues and PRs that are included in a release, letting
+# reporters and contributors know their fix has shipped.
+# Only runs on real (non-prerelease) releases; edge/prerelease tags are skipped.
+on:
+  release:
+    types: [released]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+env:
+  # apexskier/github-release-commenter's action.yml declares node20; force node24
+  # ahead of Node 20's removal from runners, see
+  # https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  release-commenter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: apexskier/github-release-commenter@v1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          comment-template: |
+            🎉 This has been included in the {release_link} release.
+          skip-label: dependencies
