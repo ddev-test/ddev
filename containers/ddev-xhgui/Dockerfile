@@ -1,6 +1,11 @@
 FROM xhgui/xhgui:0.23 AS ddev-xhgui
 
+# Phase 2 (#8609) end-to-end test: trivial content change to exercise
+# detect -> approval -> build -> push on ddev-test/ddev.
+# And try again; this time only xhgui should get pushed
+# We need an actual change to get a new push
 RUN apk add --no-cache bash curl tzdata
+RUN ls /var
 ADD /var /var
 ADD /etc /etc
 RUN echo 'memory_limit=512M' >> $PHP_INI_DIR/conf.d/99-memory-limit.ini
