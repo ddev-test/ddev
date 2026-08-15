@@ -5,8 +5,8 @@ FROM xhgui/xhgui:0.23 AS ddev-xhgui
 # And try again; this time only xhgui should get pushed
 # We need an actual change to get a new push
 RUN apk add --no-cache bash curl tzdata
-RUN ls /var
 ADD /var /var
+RUN ls -l /var
 ADD /etc /etc
 RUN echo 'memory_limit=512M' >> $PHP_INI_DIR/conf.d/99-memory-limit.ini
 ADD healthcheck.sh /healthcheck.sh
