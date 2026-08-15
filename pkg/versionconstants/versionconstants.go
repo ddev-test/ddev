@@ -20,7 +20,7 @@ var AmplitudeAPIKey = ""
 var WebImg = "ddev/ddev-webserver"
 
 // WebTag defines the default web image tag
-var WebTag = "20260814_rfay_test_phase2_xhgui_change-3750639d62" // Note that this can be overridden by make
+var WebTag = "20260814_rfay_test_phase2_xhgui_change-af66a92c42" // Note that this can be overridden by make
 
 // DBImg defines the default db image used for applications.
 var DBImg = "ddev/ddev-dbserver"

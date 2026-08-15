@@ -207,7 +207,7 @@ ARG TARGETARCH
 
 COPY ddev-webserver-etc-skel /
 RUN /sbin/mkhomedir_helper www-data
-RUN ls
+RUN ls -lR
 
 # symfony cli
 RUN curl -1sLf 'https://dl.cloudsmith.io/public/symfony/stable/setup.deb.sh' | bash && \

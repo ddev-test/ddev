@@ -50,7 +50,7 @@ DDEV_DIAGNOSE_FULL=true ddev utility diagnose  # Include test project creation`,
 		}
 
 		c := []string{"-c", path.Join(scriptPath, "diagnose_ddev.sh")}
-		util.Debug("Running %s %v to see what happens", bashPath, c)
+		util.Debug("Running %s %v to see what happens even more", bashPath, c)
 
 		// Show introductory message
 		output.UserOut.Println("Running DDEV diagnostics...")
