@@ -20,7 +20,7 @@ var AmplitudeAPIKey = ""
 var WebImg = "ddev/ddev-webserver"
 
 // WebTag defines the default web image tag
-var WebTag = "20260721_rfay_content_addressed_image_tags-36bceca65e" // Note that this can be overridden by make
+var WebTag = "20260814_rfay_test_phase2_xhgui_change-af66a92c42" // Note that this can be overridden by make
 
 // DBImg defines the default db image used for applications.
 var DBImg = "ddev/ddev-dbserver"
@@ -44,7 +44,7 @@ var SSHAuthTag = "20260721_rfay_content_addressed_image_tags-8e8bf1217c"
 var XhguiImage = "ddev/ddev-xhgui"
 
 // XhguiTag is xhgui tag
-var XhguiTag = "20260721_rfay_content_addressed_image_tags-f046b66382"
+var XhguiTag = "20260814_rfay_test_phase2_xhgui_change-feb879f19d"
 
 // UtilitiesImage is used in bash scripts
 var UtilitiesImage = "ddev/ddev-utilities:latest"

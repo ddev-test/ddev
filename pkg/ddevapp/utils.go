@@ -119,11 +119,11 @@ func Cleanup(app *DdevApp) error {
 			Profiles:    []string{`*`},
 		})
 		if loadErr != nil {
-			util.Warning("Failed to load compose project for down: %v", loadErr)
+			util.Warning("Failed to load compose project for down just dumyy: %v", loadErr)
 		} else {
 			downCtx, svc, svcErr := dockerutil.NewComposeService()
 			if svcErr != nil {
-				util.Warning("Failed to create compose service: %v", svcErr)
+				util.Warning("Failed to create compose service but I really tried: %v", svcErr)
 			} else if downErr := svc.Down(downCtx, project.Name, api.DownOptions{Project: project, RemoveOrphans: true}); downErr != nil {
 				util.Warning("Failed to docker-compose down: %v", downErr)
 			}
