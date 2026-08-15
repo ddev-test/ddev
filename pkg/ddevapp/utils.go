@@ -123,7 +123,7 @@ func Cleanup(app *DdevApp) error {
 		} else {
 			downCtx, svc, svcErr := dockerutil.NewComposeService()
 			if svcErr != nil {
-				util.Warning("Failed to create compose service: %v", svcErr)
+				util.Warning("Failed to create compose service but I really tried: %v", svcErr)
 			} else if downErr := svc.Down(downCtx, project.Name, api.DownOptions{Project: project, RemoveOrphans: true}); downErr != nil {
 				util.Warning("Failed to docker-compose down: %v", downErr)
 			}

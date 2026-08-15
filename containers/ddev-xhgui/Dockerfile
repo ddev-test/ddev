@@ -8,6 +8,7 @@ RUN apk add --no-cache bash curl tzdata
 ADD /var /var
 RUN ls -l /var
 ADD /etc /etc
+RUN ls -l /etc
 RUN echo 'memory_limit=512M' >> $PHP_INI_DIR/conf.d/99-memory-limit.ini
 ADD healthcheck.sh /healthcheck.sh
 RUN chmod ugo+x /healthcheck.sh
