@@ -44,7 +44,7 @@ var SSHAuthTag = "20260721_rfay_content_addressed_image_tags-8e8bf1217c"
 var XhguiImage = "ddev/ddev-xhgui"
 
 // XhguiTag is xhgui tag
-var XhguiTag = "20260814_rfay_test_phase2_xhgui_change-186ebdb177"
+var XhguiTag = "20260814_rfay_test_phase2_xhgui_change-feb879f19d"
 
 // UtilitiesImage is used in bash scripts
 var UtilitiesImage = "ddev/ddev-utilities:latest"

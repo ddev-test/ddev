@@ -119,7 +119,7 @@ func Cleanup(app *DdevApp) error {
 			Profiles:    []string{`*`},
 		})
 		if loadErr != nil {
-			util.Warning("Failed to load compose project for down: %v", loadErr)
+			util.Warning("Failed to load compose project for down just dumyy: %v", loadErr)
 		} else {
 			downCtx, svc, svcErr := dockerutil.NewComposeService()
 			if svcErr != nil {

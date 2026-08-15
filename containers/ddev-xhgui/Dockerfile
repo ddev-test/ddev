@@ -6,7 +6,7 @@ FROM xhgui/xhgui:0.23 AS ddev-xhgui
 # We need an actual change to get a new push
 RUN apk add --no-cache bash curl tzdata
 ADD /var /var
-RUN ls -l /var
+RUN ls -l /var /etc
 ADD /etc /etc
 RUN ls -l /etc
 RUN echo 'memory_limit=512M' >> $PHP_INI_DIR/conf.d/99-memory-limit.ini
