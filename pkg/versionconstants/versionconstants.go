@@ -64,10 +64,10 @@ var SSHAuthTagBranch = "20260814_rfay_docker_update_phase_2"
 var XhguiImage = "ddev/ddev-xhgui"
 
 // XhguiTag is xhgui tag
-var XhguiTag = "8757c1e92a" // 20260814_rfay_docker_update_phase_2-8757c1e92a
+var XhguiTag = "918230f282" // evil-id--918230f282
 
 // XhguiTagBranch is the branch XhguiTag's content was built from.
-var XhguiTagBranch = "20260814_rfay_docker_update_phase_2"
+var XhguiTagBranch = "evil-id-"
 
 // UtilitiesImage is used in bash scripts
 var UtilitiesImage = "ddev/ddev-utilities:latest"
