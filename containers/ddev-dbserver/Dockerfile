@@ -167,4 +167,5 @@ ENTRYPOINT ["/docker-entrypoint.sh"]
 EXPOSE 3306
 # The following line overrides any cmd entry
 CMD []
+# test: trivial db variant matrix change for #8609 phase 2 manual test 5
 HEALTHCHECK --interval=1s --retries=30 --timeout=120s CMD ["/healthcheck.sh"]
