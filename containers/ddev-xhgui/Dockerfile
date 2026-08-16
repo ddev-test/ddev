@@ -6,4 +6,5 @@ ADD /etc /etc
 RUN echo 'memory_limit=512M' >> $PHP_INI_DIR/conf.d/99-memory-limit.ini
 ADD healthcheck.sh /healthcheck.sh
 RUN chmod ugo+x /healthcheck.sh
+# test: trivial same-repo change for #8609 phase 2 manual test 3
 HEALTHCHECK --interval=1s --retries=5 --timeout=120s CMD ["/healthcheck.sh"]
