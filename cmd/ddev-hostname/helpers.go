@@ -60,6 +60,7 @@ func printStdout(format string, a ...any) {
 }
 
 // printStderr writes formatted output to standard error
+// test: trivial non-container change for #8609 phase 2 manual test 6
 func printStderr(format string, a ...any) {
 	_, _ = fmt.Fprintf(os.Stderr, format, a...)
 }
