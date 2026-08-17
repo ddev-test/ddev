@@ -6,7 +6,7 @@ FROM debian:trixie-slim AS ddev-ssh-agent
 # tzdata-legacy - to avoid issues with deprecated timezones
 RUN apt-get update && apt-get install -y bash expect file gpg openssh-client socat psmisc tzdata-legacy && apt-get autoclean
 
-# Copy container files
+# Copy container files 2
 COPY files /
 
 # Setup environment variables; export SSH_AUTH_SOCK from socket directory

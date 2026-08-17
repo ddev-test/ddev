@@ -2,7 +2,7 @@ FROM traefik:v3 AS ddev-traefik-router
 
 ENV TRAEFIK_MONITOR_PORT=10999
 # socat serves the informative "no matching project" fallback page as an
-# actual HTTP 404 response, see docker-entrypoint.sh and unmatched-route.html
+# actual HTTP 404 response, see docker-entrypoint.sh and unmatched-route.html 2
 RUN apk add --no-cache bash curl file htop jq openssl socat vim yq
 WORKDIR /mnt/ddev-global-cache/traefik
 COPY files /

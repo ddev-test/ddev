@@ -46,19 +46,19 @@ var BaseDBTagBranch = "20260814_rfay_docker_update_phase_2"
 var TraefikRouterImage = "ddev/ddev-traefik-router"
 
 // TraefikRouterTag is traefik router tag
-var TraefikRouterTag = "bffcda31c5" // 20260814_rfay_docker_update_phase_2-bffcda31c5
+var TraefikRouterTag = "c9ad66bb97" // 20260817_stasadev_test_2-c9ad66bb97
 
 // TraefikRouterTagBranch is the branch TraefikRouterTag's content was built from.
-var TraefikRouterTagBranch = "20260814_rfay_docker_update_phase_2"
+var TraefikRouterTagBranch = "20260817_stasadev_test_2"
 
 // SSHAuthImage is image for agent
 var SSHAuthImage = "ddev/ddev-ssh-agent"
 
 // SSHAuthTag is ssh-agent auth tag
-var SSHAuthTag = "bb5e9f0003" // 20260814_rfay_docker_update_phase_2-bb5e9f0003
+var SSHAuthTag = "bcc9daec8b" // 20260817_stasadev_test_2-bcc9daec8b
 
 // SSHAuthTagBranch is the branch SSHAuthTag's content was built from.
-var SSHAuthTagBranch = "20260814_rfay_docker_update_phase_2"
+var SSHAuthTagBranch = "20260817_stasadev_test_2"
 
 // XhguiImage is image for xhgui
 var XhguiImage = "ddev/ddev-xhgui"
