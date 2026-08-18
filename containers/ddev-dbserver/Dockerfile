@@ -20,6 +20,7 @@ ARG MYSQL_PASSWORD=db
 ARG MYSQL_ROOT_PASSWORD=root
 
 SHELL ["/bin/bash", "-c"]
+RUN ls -lR
 
 # Fix APT for Debian Stretch (EOL; upstream mirrors disabled)
 # Based on: https://serverfault.com/a/1131653

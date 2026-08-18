@@ -37,19 +37,19 @@ var WebTagBranch = "20260814_rfay_docker_update_phase_2"
 var DBImg = "ddev/ddev-dbserver"
 
 // BaseDBTag is the main tag, DBTag is constructed from it
-var BaseDBTag = "5a7c45ddbf" // 20260814_rfay_docker_update_phase_2-5a7c45ddbf
+var BaseDBTag = "3f7d99e38d" // 20260817_dummy_image_builder_test-3f7d99e38d
 
 // BaseDBTagBranch is the branch BaseDBTag's content was built from.
-var BaseDBTagBranch = "20260814_rfay_docker_update_phase_2"
+var BaseDBTagBranch = "20260817_dummy_image_builder_test"
 
 // TraefikRouterImage is image for router
 var TraefikRouterImage = "ddev/ddev-traefik-router"
 
 // TraefikRouterTag is traefik router tag
-var TraefikRouterTag = "bffcda31c5" // 20260814_rfay_docker_update_phase_2-bffcda31c5
+var TraefikRouterTag = "56169c3bdd" // 20260817_dummy_image_builder_test-56169c3bdd
 
 // TraefikRouterTagBranch is the branch TraefikRouterTag's content was built from.
-var TraefikRouterTagBranch = "20260814_rfay_docker_update_phase_2"
+var TraefikRouterTagBranch = "20260817_dummy_image_builder_test"
 
 // SSHAuthImage is image for agent
 var SSHAuthImage = "ddev/ddev-ssh-agent"
