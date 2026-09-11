@@ -49,46 +49,46 @@ func IsUnreleasedDdevVersion(version string) bool {
 var WebImg = "ddev/ddev-webserver"
 
 // WebTag defines the default web image tag
-var WebTag = "edbebeadc5" // 20260831_v1.25.4-edbebeadc5
+var WebTag = "d7e7e202b2" // 20260911_release_prep-d7e7e202b2
 
 // WebTagBranch is the branch WebTag's content was built from.
-var WebTagBranch = "v1.25.4"
+var WebTagBranch = "v1.108.0-rc5"
 
 // DBImg defines the default db image used for applications.
 var DBImg = "ddev/ddev-dbserver"
 
 // BaseDBTag is the main tag, DBTag is constructed from it
-var BaseDBTag = "491fa83f61" // 20260904_maria-backup-491fa83f61
+var BaseDBTag = "c6642dbf49" // 20260911_release_prep-c6642dbf49
 
 // BaseDBTagBranch is the branch BaseDBTag's content was built from.
-var BaseDBTagBranch = "20260904_maria-backup"
+var BaseDBTagBranch = "v1.108.0-rc5"
 
 // TraefikRouterImage is image for router
 var TraefikRouterImage = "ddev/ddev-traefik-router"
 
 // TraefikRouterTag is traefik router tag
-var TraefikRouterTag = "b7ce92d10d" // 20260831_v1.25.4-b7ce92d10d
+var TraefikRouterTag = "434f9db402" // 20260911_release_prep-434f9db402
 
 // TraefikRouterTagBranch is the branch TraefikRouterTag's content was built from.
-var TraefikRouterTagBranch = "v1.25.4"
+var TraefikRouterTagBranch = "v1.108.0-rc5"
 
 // SSHAuthImage is image for agent
 var SSHAuthImage = "ddev/ddev-ssh-agent"
 
 // SSHAuthTag is ssh-agent auth tag
-var SSHAuthTag = "544e096521" // 20260831_v1.25.4-544e096521
+var SSHAuthTag = "a84cb989e5" // 20260911_release_prep-a84cb989e5
 
 // SSHAuthTagBranch is the branch SSHAuthTag's content was built from.
-var SSHAuthTagBranch = "v1.25.4"
+var SSHAuthTagBranch = "v1.108.0-rc5"
 
 // XhguiImage is image for xhgui
 var XhguiImage = "ddev/ddev-xhgui"
 
 // XhguiTag is xhgui tag
-var XhguiTag = "7269c5a85e" // 20260831_v1.25.4-7269c5a85e
+var XhguiTag = "cf30ecf9b1" // 20260911_release_prep-cf30ecf9b1
 
 // XhguiTagBranch is the branch XhguiTag's content was built from.
-var XhguiTagBranch = "v1.25.4"
+var XhguiTagBranch = "v1.108.0-rc5"
 
 // UtilitiesImage is used in bash scripts
 var UtilitiesImage = "ddev/ddev-utilities:latest"
