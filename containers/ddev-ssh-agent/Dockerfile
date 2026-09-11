@@ -34,4 +34,4 @@ VOLUME ${SOCKET_DIR}
 ENTRYPOINT ["/entry.sh"]
 
 CMD ["ssh-agent"]
-# ddev-release-marker: v1.108.0-rc5
+# ddev-release-marker: v1.108.0

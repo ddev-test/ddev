@@ -49,46 +49,46 @@ func IsUnreleasedDdevVersion(version string) bool {
 var WebImg = "ddev/ddev-webserver"
 
 // WebTag defines the default web image tag
-var WebTag = "d7e7e202b2" // 20260911_release_prep-d7e7e202b2
+var WebTag = "a89bc6699d" // 20260911_v1.108.0_release-a89bc6699d
 
 // WebTagBranch is the branch WebTag's content was built from.
-var WebTagBranch = "v1.108.0-rc5"
+var WebTagBranch = "v1.108.0"
 
 // DBImg defines the default db image used for applications.
 var DBImg = "ddev/ddev-dbserver"
 
 // BaseDBTag is the main tag, DBTag is constructed from it
-var BaseDBTag = "c6642dbf49" // 20260911_release_prep-c6642dbf49
+var BaseDBTag = "1c5025f0af" // 20260911_v1.108.0_release-1c5025f0af
 
 // BaseDBTagBranch is the branch BaseDBTag's content was built from.
-var BaseDBTagBranch = "v1.108.0-rc5"
+var BaseDBTagBranch = "v1.108.0"
 
 // TraefikRouterImage is image for router
 var TraefikRouterImage = "ddev/ddev-traefik-router"
 
 // TraefikRouterTag is traefik router tag
-var TraefikRouterTag = "434f9db402" // 20260911_release_prep-434f9db402
+var TraefikRouterTag = "5849827ec0" // 20260911_v1.108.0_release-5849827ec0
 
 // TraefikRouterTagBranch is the branch TraefikRouterTag's content was built from.
-var TraefikRouterTagBranch = "v1.108.0-rc5"
+var TraefikRouterTagBranch = "v1.108.0"
 
 // SSHAuthImage is image for agent
 var SSHAuthImage = "ddev/ddev-ssh-agent"
 
 // SSHAuthTag is ssh-agent auth tag
-var SSHAuthTag = "a84cb989e5" // 20260911_release_prep-a84cb989e5
+var SSHAuthTag = "537a904884" // 20260911_v1.108.0_release-537a904884
 
 // SSHAuthTagBranch is the branch SSHAuthTag's content was built from.
-var SSHAuthTagBranch = "v1.108.0-rc5"
+var SSHAuthTagBranch = "v1.108.0"
 
 // XhguiImage is image for xhgui
 var XhguiImage = "ddev/ddev-xhgui"
 
 // XhguiTag is xhgui tag
-var XhguiTag = "cf30ecf9b1" // 20260911_release_prep-cf30ecf9b1
+var XhguiTag = "2b9ae31402" // 20260911_v1.108.0_release-2b9ae31402
 
 // XhguiTagBranch is the branch XhguiTag's content was built from.
-var XhguiTagBranch = "v1.108.0-rc5"
+var XhguiTagBranch = "v1.108.0"
 
 // UtilitiesImage is used in bash scripts
 var UtilitiesImage = "ddev/ddev-utilities:latest"
