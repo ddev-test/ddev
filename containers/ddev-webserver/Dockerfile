@@ -663,4 +663,4 @@ COPY --from=ddev-webserver-prod-base / /
 HEALTHCHECK --interval=1s --retries=120 --timeout=120s --start-period=120s CMD ["/healthcheck.sh"]
 CMD ["/start.sh"]
 ### -------------------------END ddev-webserver-prod------------------------------
-# ddev-release-marker: v1.25.4
+# ddev-release-marker: v1.108.0-rc4
